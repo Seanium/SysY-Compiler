@@ -6,6 +6,8 @@ import java.util.HashMap;
 public class Lexer {
     private final String input;   // 输入的字符串
     private int pos;    // 当前读到的字符的位置
+    private int lineNum;  // 当前读到的字符所在的行号
+    private Token curToken;
 
     // 定义保留字表 (4.main ~ 15.void)
     private static final HashMap<String, TokenType> reservedWords = new HashMap<>() {{
@@ -26,12 +28,16 @@ public class Lexer {
     public Lexer(String input) {
         this.input = input;
         this.pos = 0;
+        this.lineNum = 1;
     }
 
-    public ArrayList<Token> tokenize() {
-        int lineNum = 1;
-        ArrayList<Token> tokens = new ArrayList<>();
-        while (pos < input.length()) {
+    // next()在文末返回null, 其他时候均返回有效的 curToken (不包括空白字符和换行符)
+    public void next() {
+        curToken = null;    // 重置 curToken
+        while (curToken == null) {  // 让 next() 只在文末返回null, 其他时候均返回有效的 curToken
+            if (pos == input.length()) {
+                return;
+            }
             char c = input.charAt(pos); // 当前字符
             char next = pos + 1 < input.length() ? input.charAt(pos + 1) : '\0';    // 下一个字符
             if (c == ' ' || c == '\t' || c == '\r') {   // 空白字符
@@ -39,26 +45,23 @@ public class Lexer {
             } else if (c == '\n') { // 换行符
                 lineNum++;
                 pos++;
-            } else if (Character.isDigit(c) && c != '0') { // 1.整型常量(非0)
-                tokens.add(getNumber());
-            } else if (c == '0') {  // 1.整型常量(0)
-                tokens.add(new Token(TokenType.INTCON, "0"));
-                pos++;
+            } else if (Character.isDigit(c)) { // 1.整型常量    //TODO 现在包容了0开头的整数
+                curToken = getNumber();
             } else if (c == '_' || Character.isLetter(c)) { // 4~15.保留字 或 3.标识符
-                tokens.add(getWord());
+                curToken = getWord();
             } else if (c == '\"') { // 2.格式字符串
-                tokens.add(getFormatString());
+                curToken = getFormatString();
             } else if (c == '!') {   // 16.! 或 29.!=
                 if (next == '=') {
-                    tokens.add(new Token(TokenType.NEQ, "!="));
+                    curToken = new Token(TokenType.NEQ, "!=", lineNum);
                     pos += 2;
                 } else {
-                    tokens.add(new Token(TokenType.NOT, "!"));
+                    curToken = new Token(TokenType.NOT, "!", lineNum);
                     pos++;
                 }
             } else if (c == '&') {  // 17.&&
                 if (next == '&') {
-                    tokens.add(new Token(TokenType.AND, "&&"));
+                    curToken = new Token(TokenType.AND, "&&", lineNum);
                     pos += 2;
                 } else {
                     // TODO 词法错误的处理
@@ -66,20 +69,20 @@ public class Lexer {
                 }
             } else if (c == '|') {  // 18.||
                 if (next == '|') {
-                    tokens.add(new Token(TokenType.OR, "||"));
+                    curToken = new Token(TokenType.OR, "||", lineNum);
                     pos += 2;
                 } else {
                     // TODO 词法错误的处理
                     throw new RuntimeException("line " + lineNum + ": 词法错误");
                 }
             } else if (c == '+') {  // 19.+
-                tokens.add(new Token(TokenType.PLUS, "+"));
+                curToken = new Token(TokenType.PLUS, "+", lineNum);
                 pos++;
             } else if (c == '-') {  // 20.-
-                tokens.add(new Token(TokenType.MINU, "-"));
+                curToken = new Token(TokenType.MINU, "-", lineNum);
                 pos++;
             } else if (c == '*') {  // 21.*
-                tokens.add(new Token(TokenType.MULT, "*"));
+                curToken = new Token(TokenType.MULT, "*", lineNum);
                 pos++;
             } else if (c == '/') {  // 22./ 或 注释//... 或 注释/*...*/
                 if (next == '/') {  // 注释//...
@@ -98,83 +101,81 @@ public class Lexer {
                         }
                     }
                 } else {
-                    tokens.add(new Token(TokenType.DIV, "/"));
+                    curToken = new Token(TokenType.DIV, "/", lineNum);
                     pos++;
                 }
             } else if (c == '%') {  // 23.%
-                tokens.add(new Token(TokenType.MOD, "%"));
+                curToken = new Token(TokenType.MOD, "%", lineNum);
                 pos++;
             } else if (c == '<') {  // 24.< 或 25.<=
                 if (next == '=') {
-                    tokens.add(new Token(TokenType.LEQ, "<="));
+                    curToken = new Token(TokenType.LEQ, "<=", lineNum);
                     pos += 2;
                 } else {
-                    tokens.add(new Token(TokenType.LSS, "<"));
+                    curToken = new Token(TokenType.LSS, "<", lineNum);
                     pos++;
                 }
             } else if (c == '>') {  // 26.> 或 27.>=
                 if (next == '=') {
-                    tokens.add(new Token(TokenType.GEQ, ">="));
+                    curToken = new Token(TokenType.GEQ, ">=", lineNum);
                     pos += 2;
                 } else {
-                    tokens.add(new Token(TokenType.GRE, ">"));
+                    curToken = new Token(TokenType.GRE, ">", lineNum);
                     pos++;
                 }
             } else if (c == '=') {  // 28.== 或 30.=
                 if (next == '=') {
-                    tokens.add(new Token(TokenType.EQL, "=="));
+                    curToken = new Token(TokenType.EQL, "==", lineNum);
                     pos += 2;
                 } else {
-                    tokens.add(new Token(TokenType.ASSIGN, "="));
+                    curToken = new Token(TokenType.ASSIGN, "=", lineNum);
                     pos++;
                 }
             } else if (c == ';') {  // 31.;
-                tokens.add(new Token(TokenType.SEMICN, ";"));
+                curToken = new Token(TokenType.SEMICN, ";", lineNum);
                 pos++;
             } else if (c == ',') {  // 32.,
-                tokens.add(new Token(TokenType.COMMA, ","));
+                curToken = new Token(TokenType.COMMA, ",", lineNum);
                 pos++;
             } else if (c == '(') {  // 33.(
-                tokens.add(new Token(TokenType.LPARENT, "("));
+                curToken = new Token(TokenType.LPARENT, "(", lineNum);
                 pos++;
             } else if (c == ')') {  // 34.)
-                tokens.add(new Token(TokenType.RPARENT, ")"));
+                curToken = new Token(TokenType.RPARENT, ")", lineNum);
                 pos++;
             } else if (c == '[') {  // 35.[
-                tokens.add(new Token(TokenType.LBRACK, "["));
+                curToken = new Token(TokenType.LBRACK, "[", lineNum);
                 pos++;
             } else if (c == ']') {  // 36.]
-                tokens.add(new Token(TokenType.RBRACK, "]"));
+                curToken = new Token(TokenType.RBRACK, "]", lineNum);
                 pos++;
             } else if (c == '{') {  // 37.{
-                tokens.add(new Token(TokenType.LBRACE, "{"));
+                curToken = new Token(TokenType.LBRACE, "{", lineNum);
                 pos++;
             } else if (c == '}') {  // 38.}
-                tokens.add(new Token(TokenType.RBRACE, "}"));
+                curToken = new Token(TokenType.RBRACE, "}", lineNum);
                 pos++;
             } else {
                 // TODO 词法错误的处理
                 throw new RuntimeException("line " + lineNum + ": 词法错误");
             }
         }
+    }
+
+    // 单独进行一遍完整的词法分析
+    public ArrayList<Token> tokenize() {
+        ArrayList<Token> tokens = new ArrayList<>();
+        while (pos < input.length()) {
+            next();
+            if (curToken != null) {
+                tokens.add(curToken);
+            }
+        }
         return tokens;
     }
 
-    private Token getWord() {
-        StringBuilder sb = new StringBuilder();
-        while (pos < input.length()) {
-            char c = input.charAt(pos);
-            if (c == '_' || Character.isLetter(c) || Character.isDigit(c)) {
-                sb.append(c);
-                pos++;
-            } else {
-                break;
-            }
-        }
-        String word = sb.toString();
-        return new Token(reservedWords.getOrDefault(word, TokenType.IDENFR), word);
-    }
 
+    // 子程序 识别数字
     private Token getNumber() {
         StringBuilder sb = new StringBuilder();
         while (pos < input.length()) {
@@ -187,9 +188,10 @@ public class Lexer {
             }
         }
         String number = sb.toString();
-        return new Token(TokenType.INTCON, number);
+        return new Token(TokenType.INTCON, number, lineNum);
     }
 
+    // 子程序 识别格式字符串
     private Token getFormatString() {
         StringBuilder sb = new StringBuilder();
         sb.append('\"');
@@ -222,10 +224,26 @@ public class Lexer {
             }
         }
         String formatString = sb.toString();
-        return new Token(TokenType.STRCON, formatString);
+        return new Token(TokenType.STRCON, formatString, lineNum);
     }
 
-    // 输出tokens
+    // 子程序 识别保留字和标识符
+    private Token getWord() {
+        StringBuilder sb = new StringBuilder();
+        while (pos < input.length()) {
+            char c = input.charAt(pos);
+            if (c == '_' || Character.isLetter(c) || Character.isDigit(c)) {
+                sb.append(c);
+                pos++;
+            } else {
+                break;
+            }
+        }
+        String word = sb.toString();
+        return new Token(reservedWords.getOrDefault(word, TokenType.IDENFR), word, lineNum);
+    }
+
+    // tokens数组转字符串，用于输出
     public String TokensToString(ArrayList<Token> tokens) {
         StringBuilder sb = new StringBuilder();
         for (Token token : tokens) {
@@ -245,11 +263,13 @@ public class Lexer {
     public static class Token {
         final TokenType type;
         final String value;
+        final int lineNum;
 
-        private Token(TokenType type, String value) {
+        private Token(TokenType type, String value, int lineNum) {
             this.type = type;
             this.value = value;
-            System.out.println(this);
+            this.lineNum = lineNum;
+//            System.out.println(this);
         }
 
         @Override

@@ -31,15 +31,15 @@ public class Lexer {
         this.lineNum = 1;
     }
 
-    // next()在文末返回null, 其他时候均返回有效的 curToken (不包括空白字符和换行符)
+    // curToken在文末为null, 其他时候均为有效值 (不包括空白字符和换行符)
     public void next() {
         curToken = null;    // 重置 curToken
-        while (curToken == null) {  // 让 next() 只在文末返回null, 其他时候均返回有效的 curToken
+        while (curToken == null) {
             if (pos == input.length()) {
                 return;
             }
             char c = input.charAt(pos); // 当前字符
-            char next = pos + 1 < input.length() ? input.charAt(pos + 1) : '\0';    // 下一个字符
+            char nextC = pos + 1 < input.length() ? input.charAt(pos + 1) : '\0';    // 下一个字符
             if (c == ' ' || c == '\t' || c == '\r') {   // 空白字符
                 pos++;
             } else if (c == '\n') { // 换行符
@@ -52,7 +52,7 @@ public class Lexer {
             } else if (c == '\"') { // 2.格式字符串
                 curToken = getFormatString();
             } else if (c == '!') {   // 16.! 或 29.!=
-                if (next == '=') {
+                if (nextC == '=') {
                     curToken = new Token(TokenType.NEQ, "!=", lineNum);
                     pos += 2;
                 } else {
@@ -60,7 +60,7 @@ public class Lexer {
                     pos++;
                 }
             } else if (c == '&') {  // 17.&&
-                if (next == '&') {
+                if (nextC == '&') {
                     curToken = new Token(TokenType.AND, "&&", lineNum);
                     pos += 2;
                 } else {
@@ -68,7 +68,7 @@ public class Lexer {
                     throw new RuntimeException("line " + lineNum + ": 词法错误");
                 }
             } else if (c == '|') {  // 18.||
-                if (next == '|') {
+                if (nextC == '|') {
                     curToken = new Token(TokenType.OR, "||", lineNum);
                     pos += 2;
                 } else {
@@ -85,12 +85,12 @@ public class Lexer {
                 curToken = new Token(TokenType.MULT, "*", lineNum);
                 pos++;
             } else if (c == '/') {  // 22./ 或 注释//... 或 注释/*...*/
-                if (next == '/') {  // 注释//...
+                if (nextC == '/') {  // 注释//...
                     pos += 2;
                     while (pos < input.length() && input.charAt(pos) != '\n') {
                         pos++;
                     }
-                } else if (next == '*') {   // 注释/*...*/
+                } else if (nextC == '*') {   // 注释/*...*/
                     pos += 2;
                     while (pos < input.length()) {
                         if (input.charAt(pos) == '*' && pos + 1 < input.length() && input.charAt(pos + 1) == '/') {
@@ -108,7 +108,7 @@ public class Lexer {
                 curToken = new Token(TokenType.MOD, "%", lineNum);
                 pos++;
             } else if (c == '<') {  // 24.< 或 25.<=
-                if (next == '=') {
+                if (nextC == '=') {
                     curToken = new Token(TokenType.LEQ, "<=", lineNum);
                     pos += 2;
                 } else {
@@ -116,7 +116,7 @@ public class Lexer {
                     pos++;
                 }
             } else if (c == '>') {  // 26.> 或 27.>=
-                if (next == '=') {
+                if (nextC == '=') {
                     curToken = new Token(TokenType.GEQ, ">=", lineNum);
                     pos += 2;
                 } else {
@@ -124,7 +124,7 @@ public class Lexer {
                     pos++;
                 }
             } else if (c == '=') {  // 28.== 或 30.=
-                if (next == '=') {
+                if (nextC == '=') {
                     curToken = new Token(TokenType.EQL, "==", lineNum);
                     pos += 2;
                 } else {
@@ -220,7 +220,7 @@ public class Lexer {
                 }
             } else {
                 // TODO 词法错误的处理
-                throw new RuntimeException("line " + pos + ": 词法错误");
+                throw new RuntimeException("line " + pos + ": 词法错误，错误类别码a：非法符号");
             }
         }
         String formatString = sb.toString();
@@ -252,12 +252,20 @@ public class Lexer {
         return String.valueOf(sb);
     }
 
-    enum TokenType {
+    public enum TokenType {
         INTCON, // 整型常量
         STRCON, // 格式字符串
         IDENFR, // 标识符
         MAINTK, CONSTTK, INTTK, BREAKTK, CONTINUETK, IFTK, ELSETK, FORTK, GETINTTK, PRINTFTK, RETURNTK, VOIDTK, // 保留字
         NOT, AND, OR, PLUS, MINU, MULT, DIV, MOD, LSS, LEQ, GRE, GEQ, EQL, NEQ, ASSIGN, SEMICN, COMMA, LPARENT, RPARENT, LBRACK, RBRACK, LBRACE, RBRACE // 分界符
+    }
+
+    public TokenType getType() {
+        return curToken.type;
+    }
+
+    public String getValue() {
+        return curToken.value;
     }
 
     public static class Token {

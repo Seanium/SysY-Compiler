@@ -252,12 +252,8 @@ public class Lexer {
         return String.valueOf(sb);
     }
 
-    public enum TokenType {
-        INTCON, // 整型常量
-        STRCON, // 格式字符串
-        IDENFR, // 标识符
-        MAINTK, CONSTTK, INTTK, BREAKTK, CONTINUETK, IFTK, ELSETK, FORTK, GETINTTK, PRINTFTK, RETURNTK, VOIDTK, // 保留字
-        NOT, AND, OR, PLUS, MINU, MULT, DIV, MOD, LSS, LEQ, GRE, GEQ, EQL, NEQ, ASSIGN, SEMICN, COMMA, LPARENT, RPARENT, LBRACK, RBRACK, LBRACE, RBRACE // 分界符
+    public Token getCurToken() {
+        return curToken;
     }
 
     public TokenType getType() {
@@ -268,21 +264,4 @@ public class Lexer {
         return curToken.value;
     }
 
-    public static class Token {
-        final TokenType type;
-        final String value;
-        final int lineNum;
-
-        private Token(TokenType type, String value, int lineNum) {
-            this.type = type;
-            this.value = value;
-            this.lineNum = lineNum;
-//            System.out.println(this);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s %s", type, value);
-        }
-    }
 }

@@ -17,4 +17,7 @@ public class Token {
         return String.format("%s %s", type, value);
     }
 
+    public TokenType getType() {
+        return type;
+    }
 }

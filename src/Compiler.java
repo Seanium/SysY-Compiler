@@ -1,4 +1,6 @@
 import frontend.Lexer;
+import frontend.Parser;
+import frontend.node.CompUnitNode;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,8 +29,11 @@ public class Compiler {
         String source = readFile("testfile.txt");
 //        System.out.println(source);
         Lexer lexer = new Lexer(source);
-        String tokens = lexer.TokensToString(lexer.tokenize());
-        System.out.println(tokens);
-        writeFile("output.txt", tokens);
+//        String tokens = lexer.TokensToString(lexer.tokenize());
+//        System.out.println(tokens);
+//        writeFile("output.txt", tokens);
+
+        Parser parser = new Parser(lexer);
+        CompUnitNode compUnitNode = parser.parseCompUnit();
     }
 }

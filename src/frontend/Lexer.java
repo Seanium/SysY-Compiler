@@ -4,11 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Lexer {
-    private final String input;   // 输入的字符串
-    private int pos;    // 当前读到的字符的位置
-    private int lineNum;  // 当前读到的字符所在的行号
-    private Token curToken;
-
     // 定义保留字表 (4.main ~ 15.void)
     private static final HashMap<String, TokenType> reservedWords = new HashMap<>() {{
         put("main", TokenType.MAINTK);          // 4.main
@@ -24,11 +19,16 @@ public class Lexer {
         put("return", TokenType.RETURNTK);      // 14.return
         put("void", TokenType.VOIDTK);          // 15.void
     }};
+    private final String input;   // 输入的字符串
+    private int pos;    // 当前读到的字符的位置
+    private int lineNum;  // 当前读到的字符所在的行号
+    private Token curToken;
 
     public Lexer(String input) {
         this.input = input;
         this.pos = 0;
         this.lineNum = 1;
+        this.next();
     }
 
     // curToken在文末为null, 其他时候均为有效值 (不包括空白字符和换行符)
@@ -160,6 +160,35 @@ public class Lexer {
                 throw new RuntimeException("line " + lineNum + ": 词法错误");
             }
         }
+    }
+
+    // 预读一个token
+    public Token preRead() {
+        int prePos = pos;
+        int preLineNum = lineNum;
+        Token preToken = curToken;
+        next();
+        Token token = curToken;
+        pos = prePos;
+        lineNum = preLineNum;
+        curToken = preToken;
+        return token;
+    }
+
+    // 预读n个token
+    public Token preRead(int n) {
+        int prePos = pos;
+        int preLineNum = lineNum;
+        Token preToken = curToken;
+        Token token = null;
+        for (int i = 0; i < n; i++) {
+            next();
+            token = curToken;
+        }
+        pos = prePos;
+        lineNum = preLineNum;
+        curToken = preToken;
+        return token;
     }
 
     // 单独进行一遍完整的词法分析

@@ -191,19 +191,6 @@ public class Lexer {
         return token;
     }
 
-    // 单独进行一遍完整的词法分析
-    public ArrayList<Token> tokenize() {
-        ArrayList<Token> tokens = new ArrayList<>();
-        while (pos < input.length()) {
-            next();
-            if (curToken != null) {
-                tokens.add(curToken);
-            }
-        }
-        return tokens;
-    }
-
-
     // 子程序 识别数字
     private Token getNumber() {
         StringBuilder sb = new StringBuilder();
@@ -272,11 +259,23 @@ public class Lexer {
         return new Token(reservedWords.getOrDefault(word, TokenType.IDENFR), word, lineNum);
     }
 
+    // 单独进行一遍完整的词法分析
+    public ArrayList<Token> tokenize() {
+        ArrayList<Token> tokens = new ArrayList<>();
+        while (pos < input.length()) {
+            next();
+            if (curToken != null) {
+                tokens.add(curToken);
+            }
+        }
+        return tokens;
+    }
+
     // tokens数组转字符串，用于输出
     public String TokensToString(ArrayList<Token> tokens) {
         StringBuilder sb = new StringBuilder();
         for (Token token : tokens) {
-            sb.append(token).append("\n");
+            sb.append(token);
         }
         return String.valueOf(sb);
     }

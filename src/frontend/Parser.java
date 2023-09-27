@@ -466,7 +466,9 @@ public class Parser {
                 throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
             }
         } else if (lexer.getType() == TokenType.SEMICN) {   // [Exp] ';' //无Exp的情况，即空语句';'
-            return new StmtNode((ExpNode) null, lexer.getCurToken());
+            Token semicn = lexer.getCurToken();
+            lexer.next();
+            return new StmtNode((ExpNode) null, semicn);
         } else if (isFirstOfExp()) {
             // Stmt → LVal '=' Exp ';'			//FIRST={Ident}
             //| [Exp] ';'						//FIRST={‘(’,Ident,Number,'+','−','!'}
@@ -593,9 +595,9 @@ public class Parser {
     // 23.数值 Number → IntConst // 存在即可
     private NumberNode parseNumber() {
         if (lexer.getType() == TokenType.INTCON) {
-            Token token = lexer.getCurToken();
+            Token intConst = lexer.getCurToken();
             lexer.next();
-            return new NumberNode(token);
+            return new NumberNode(intConst);
         } else {
             return null;
         }
@@ -638,7 +640,7 @@ public class Parser {
         }
     }
 
-    // 25.单目运算符 UnaryOp → '+' | '−' | '!' //TODO 注：'!'仅出现在条件表达式中 // 三种均需覆盖
+    // 25.单目运算符 UnaryOp → '+' | '−' | '!' //注：'!'仅出现在条件表达式中 // 三种均需覆盖
     private UnaryOpNode parseUnaryOp() {
         if (lexer.getType() == TokenType.PLUS) {
             Token token = lexer.getCurToken();

@@ -17,4 +17,18 @@ public class LValNode extends Node {
         this.expNodes = expNodes;
         this.rightBrackets = rightBrackets;
     }
+
+    // 21.左值表达式 LVal → Ident {'[' Exp ']'} //1.普通变量 2.一维数组 3.二维数组
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ident.toString());
+        for (int i = 0; i < leftBrackets.size(); i++) {
+            sb.append(leftBrackets.get(i).toString());
+            sb.append(expNodes.get(i).toString());
+            sb.append(rightBrackets.get(i).toString());
+        }
+        sb.append("<LVal>\n");
+        return sb.toString();
+    }
 }

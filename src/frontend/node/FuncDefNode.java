@@ -18,4 +18,21 @@ public class FuncDefNode extends Node {
         this.rightParen = rightParen;
         this.blockNode = blockNode;
     }
+
+    // 10.函数定义 FuncDef → FuncType Ident '(' [FuncFParams] ')' Block // 1.无形参 2.有形参
+    // FIRST(FuncFParams ) = FIRST(FuncFParam) = {‘int’}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(funcTypeNode.toString());
+        sb.append(ident.toString());
+        sb.append(leftParen.toString());
+        if (funcFParamsNode != null) {
+            sb.append(funcFParamsNode);
+        }
+        sb.append(rightParen.toString());
+        sb.append(blockNode.toString());
+        sb.append("<FuncDef>\n");
+        return sb.toString();
+    }
 }

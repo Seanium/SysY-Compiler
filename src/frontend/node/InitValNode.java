@@ -26,4 +26,25 @@ public class InitValNode extends Node {
         this.commas = null;
         this.rightBrace = null;
     }
+
+    // 9.变量初值 InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'// 1.表达式初值 2.一维数组初值 3.二维数组初值
+    // FIRST(InitVal) = FIRST(Exp) + {‘{’} = {‘(’,Ident,Number,'+','−','!', ‘{’}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (expNode != null) {
+            sb.append(expNode);
+        } else {
+            sb.append(leftBrace.toString());
+            for (int i = 0; i < initValNodes.size(); i++) {
+                sb.append(initValNodes.get(i).toString());
+                if (i < commas.size()) {
+                    sb.append(commas.get(i).toString());
+                }
+            }
+            sb.append(rightBrace.toString());
+        }
+        sb.append("<InitVal>\n");
+        return sb.toString();
+    }
 }

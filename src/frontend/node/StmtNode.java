@@ -17,7 +17,6 @@ public class StmtNode extends Node {
     private Token forToken = null;
     private ForStmtNode forStmtNode1 = null;
     private Token semicn1 = null;
-    private CondNode condNode2 = null;
     private Token semicn2 = null;
     private ForStmtNode forStmtNode2 = null;
     private StmtNode stmtNode = null;
@@ -56,7 +55,7 @@ public class StmtNode extends Node {
         this.leftParen = leftParen;
         this.forStmtNode1 = forStmtNode1;
         this.semicn1 = semicn1;
-        this.condNode2 = condNode;
+        this.condNode = condNode;
         this.semicn2 = semicn2;
         this.forStmtNode2 = forStmtNode2;
         this.rightParen = rightParen;
@@ -114,5 +113,90 @@ public class StmtNode extends Node {
         this.assign = assign;
         this.expNode = expNode;
         this.semicn = semicn;
+    }
+
+    // 17.语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
+    //| [Exp] ';' //有无Exp两种情况
+    //| Block
+    //| 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // 1.有else 2.无else
+    //| 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省 2. 缺省第一个 ForStmt 3. 缺省Cond 4. 缺省第二个ForStmt
+    //| 'break' ';'
+    //| 'continue' ';'
+    //| 'return' [Exp] ';' // 1.有Exp 2.无Exp
+    //| LVal '=' 'getint''('')'';'
+    //| 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (blockNode != null) {
+            sb.append(blockNode);
+        } else if (ifToken != null) {
+            sb.append(ifToken);
+            sb.append(leftParen.toString());
+            sb.append(condNode.toString());
+            sb.append(rightParen.toString());
+            sb.append(stmtNode1.toString());
+            if (elseToken != null) {
+                sb.append(elseToken);
+                sb.append(stmtNode2.toString());
+            }
+        } else if (forToken != null) {
+            sb.append(forToken);
+            sb.append(leftParen.toString());
+            if (forStmtNode1 != null) {
+                sb.append(forStmtNode1);
+            }
+            sb.append(semicn1.toString());
+            if (condNode != null) {
+                sb.append(condNode);
+            }
+            sb.append(semicn2.toString());
+            if (forStmtNode2 != null) {
+                sb.append(forStmtNode2);
+            }
+            sb.append(rightParen.toString());
+            sb.append(stmtNode.toString());
+        } else if (breakToken != null) {
+            sb.append(breakToken);
+            sb.append(semicn.toString());
+        } else if (continueToken != null) {
+            sb.append(continueToken);
+            sb.append(semicn.toString());
+        } else if (returnToken != null) {
+            sb.append(returnToken);
+            if (expNode != null) {
+                sb.append(expNode);
+            }
+            sb.append(semicn.toString());
+        } else if (printfToken != null) {
+            sb.append(printfToken);
+            sb.append(leftParen.toString());
+            sb.append(formatString.toString());
+            for (int i = 0; i < commas.size(); i++) {
+                sb.append(commas.get(i).toString());
+                sb.append(expNodes.get(i).toString());
+            }
+            sb.append(rightParen.toString());
+            sb.append(semicn.toString());
+        } else if (lValNode != null && expNode != null) {
+            sb.append(lValNode);
+            sb.append(assign.toString());
+            sb.append(expNode.toString());
+            sb.append(semicn.toString());
+        } else if (lValNode != null && getintToken != null) {
+            sb.append(lValNode);
+            sb.append(assign.toString());
+            sb.append(getintToken.toString());
+            sb.append(leftParen.toString());
+            sb.append(rightParen.toString());
+            sb.append(semicn.toString());
+        } else if (expNode != null) {
+            sb.append(expNode);
+            sb.append(semicn.toString());
+        } else if (semicn != null) {
+            sb.append(semicn);
+        }
+        sb.append("<Stmt>\n");
+        return sb.toString();
     }
 }

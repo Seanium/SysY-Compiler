@@ -16,4 +16,20 @@ public class VarDeclNode extends Node {
         this.commas = commas;
         this.semicn = semicn;
     }
+
+    // 7.变量声明 VarDecl → BType VarDef { ',' VarDef } ';' // 1.花括号内重复0次 2.花括号内重复多次
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(bTypeNode.toString());
+        for (int i = 0; i < varDefNodes.size(); i++) {
+            sb.append(varDefNodes.get(i).toString());
+            if (i < commas.size()) {
+                sb.append(commas.get(i).toString());
+            }
+        }
+        sb.append(semicn.toString());
+        sb.append("<VarDecl>\n");
+        return sb.toString();
+    }
 }

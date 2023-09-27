@@ -18,4 +18,20 @@ public class ConstDeclNode extends Node {
         this.commas = commas;
         this.semicn = semicn;
     }
+
+    // 3.常量声明 ConstDecl → 'const' BType ConstDef { ',' ConstDef } ';' // 1.花括号内重复0次 2.花括号内重复多次
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(constToken.toString()).append(bTypeNode.toString());
+        for (int i = 0; i < constDefNodes.size(); i++) {
+            sb.append(constDefNodes.get(i).toString());
+            if (i < commas.size()) {
+                sb.append(commas.get(i).toString());
+            }
+        }
+        sb.append(semicn.toString());
+        sb.append("<ConstDecl>\n");
+        return sb.toString();
+    }
 }

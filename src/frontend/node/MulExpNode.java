@@ -24,4 +24,20 @@ public class MulExpNode extends Node {
     public UnaryExpNode getUnaryExpNode() {
         return unaryExpNode;
     }
+
+    // 27.乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖
+    //【消除左递归】 AddExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (mulExpNode == null) {
+            sb.append(unaryExpNode.toString());
+        } else {
+            sb.append(mulExpNode);
+            sb.append(op.toString());
+            sb.append(unaryExpNode.toString());
+        }
+        sb.append("<MulExp>\n");
+        return sb.toString();
+    }
 }

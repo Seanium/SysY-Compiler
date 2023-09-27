@@ -13,4 +13,17 @@ public class FuncRParamsNode extends Node {
         this.expNodes = expNodes;
         this.commas = commas;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < expNodes.size(); i++) {
+            sb.append(expNodes.get(i).toString());
+            if (i < commas.size()) {
+                sb.append(commas.get(i).toString());
+            }
+        }
+        sb.append("<FuncRParams>\n");
+        return sb.toString();
+    }
 }

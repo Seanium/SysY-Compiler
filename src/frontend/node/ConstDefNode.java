@@ -21,4 +21,20 @@ public class ConstDefNode extends Node {
         this.assign = assign;
         this.constInitValNode = constInitValNode;
     }
+
+    // 5.常数定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal // 包含普通变量、一维数组、二维数组共三种情况
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ident.toString());
+        for (int i = 0; i < leftBrackets.size(); i++) {
+            sb.append(leftBrackets.get(i).toString());
+            sb.append(constExpNodes.get(i).toString());
+            sb.append(rightBrackets.get(i).toString());
+        }
+        sb.append(assign.toString());
+        sb.append(constInitValNode.toString());
+        sb.append("<ConstDef>\n");
+        return sb.toString();
+    }
 }

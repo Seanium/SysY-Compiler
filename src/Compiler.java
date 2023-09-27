@@ -29,11 +29,17 @@ public class Compiler {
         String source = readFile("testfile.txt");
 //        System.out.println(source);
         Lexer lexer = new Lexer(source);
+
+        // 词法分析作业
 //        String tokens = lexer.TokensToString(lexer.tokenize());
 //        System.out.println(tokens);
 //        writeFile("output.txt", tokens);
 
+        // 语法分析作业
         Parser parser = new Parser(lexer);
         CompUnitNode compUnitNode = parser.parseCompUnit();
+        String parseResult = compUnitNode.toString();
+        System.out.println(parseResult);
+        writeFile("output.txt", parseResult);
     }
 }

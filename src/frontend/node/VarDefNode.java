@@ -29,4 +29,23 @@ public class VarDefNode extends Node {
         this.assign = null;
         this.initValNode = null;
     }
+
+    // 8.变量定义 VarDef → Ident { '[' ConstExp ']' } // 包含普通变量、一维数组、二维数组定义
+    // | Ident { '[' ConstExp ']' } '=' InitVal
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ident.toString());
+        for (int i = 0; i < leftBrackets.size(); i++) {
+            sb.append(leftBrackets.get(i).toString());
+            sb.append(constExpNodes.get(i).toString());
+            sb.append(rightBrackets.get(i).toString());
+        }
+        if (assign != null) {
+            sb.append(assign);
+            sb.append(initValNode.toString());
+        }
+        sb.append("<VarDef>\n");
+        return sb.toString();
+    }
 }

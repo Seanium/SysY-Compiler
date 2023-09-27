@@ -26,4 +26,26 @@ public class ConstInitValNode extends Node {
         this.commas = null;
         this.rightBrace = null;
     }
+
+    // 6.常量初值 ConstInitVal → ConstExp
+    // | '{' [ ConstInitVal { ',' ConstInitVal } ] '}' // 1.常表达式初值 2.一维数组初值 3.二维数组初值
+    // FIRST(ConstInitVal) = FIRST(ConstExp) + {‘{’} = {‘(’,Ident,Number,'+','−','!', ‘{’}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (constExpNode != null) {
+            sb.append(constExpNode);
+        } else {
+            sb.append(leftBrace.toString());
+            for (int i = 0; i < constInitValNodes.size(); i++) {
+                sb.append(constInitValNodes.get(i).toString());
+                if (i < commas.size()) {
+                    sb.append(commas.get(i).toString());
+                }
+            }
+            sb.append(rightBrace.toString());
+        }
+        sb.append("<ConstInitVal>\n");
+        return sb.toString();
+    }
 }

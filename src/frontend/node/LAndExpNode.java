@@ -18,4 +18,20 @@ public class LAndExpNode extends Node {
         this.op = null;
         this.eqExpNode = eqExpNode;
     }
+
+    // 31.逻辑与表达式 LAndExp → EqExp | LAndExp '&&' EqExp // 1.EqExp 2.&& 均需覆盖
+    // 【消除左递归】 LAndExp → EqExp {'&&' EqExp}
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (lAndExpNode == null) {
+            sb.append(eqExpNode.toString());
+        } else {
+            sb.append(lAndExpNode);
+            sb.append(op.toString());
+            sb.append(eqExpNode.toString());
+        }
+        sb.append("<LAndExp>\n");
+        return sb.toString();
+    }
 }

@@ -38,4 +38,21 @@ public class PrimaryExpNode extends Node {
     public LValNode getlValNode() {
         return lValNode;
     }
+
+    // 22.基本表达式 PrimaryExp → '(' Exp ')' | LVal | Number // 三种情况均需覆盖
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (leftParen != null) {
+            sb.append(leftParen);
+            sb.append(expNode.toString());
+            sb.append(rightParen.toString());
+        } else if (lValNode != null) {
+            sb.append(lValNode);
+        } else if (numberNode != null) {
+            sb.append(numberNode);
+        }
+        sb.append("<PrimaryExp>\n");
+        return sb.toString();
+    }
 }

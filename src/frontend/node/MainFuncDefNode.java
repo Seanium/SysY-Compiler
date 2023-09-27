@@ -16,4 +16,17 @@ public class MainFuncDefNode extends Node {
         this.rightParen = rightParen;
         this.blockNode = blockNode;
     }
+
+    // 11.主函数定义 MainFuncDef → 'int' 'main' '(' ')' Block // 存在main函数
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(intToken.toString());
+        sb.append(mainToken.toString());
+        sb.append(leftParen.toString());
+        sb.append(rightParen.toString());
+        sb.append(blockNode.toString());
+        sb.append("<MainFuncDef>\n");
+        return sb.toString();
+    }
 }

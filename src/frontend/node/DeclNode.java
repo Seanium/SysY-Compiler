@@ -13,4 +13,14 @@ public class DeclNode extends Node {
         this.varDeclNode = varDeclNode;
         this.constDeclNode = null;
     }
+
+    // 2.声明 Decl → ConstDecl | VarDecl // 覆盖两种声明
+    @Override
+    public String toString() {
+        if (constDeclNode != null) {
+            return constDeclNode.toString();
+        } else {
+            return varDeclNode.toString();
+        }
+    }
 }

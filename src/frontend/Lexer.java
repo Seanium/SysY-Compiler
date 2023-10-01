@@ -221,7 +221,7 @@ public class Lexer {
             } else if (c == 32 || c == 33 || (c >= 40 && c <= 126)) {
                 if (c == '\\' && pos + 1 < input.length() && input.charAt(pos + 1) != 'n') {    // '\'后面必须连着'n'
                     // TODO 词法错误的处理
-                    throw new RuntimeException("line " + pos + ": 词法错误");
+                    throw new RuntimeException("line " + lineNum + ": 词法错误");
                 } else {
                     sb.append(c);
                     pos++;
@@ -229,14 +229,14 @@ public class Lexer {
             } else if (c == '%') {
                 if (pos + 1 < input.length() && input.charAt(pos + 1) != 'd') {   // '%'必须连着'd'
                     // TODO 词法错误的处理
-                    throw new RuntimeException("line " + pos + ": 词法错误");
+                    throw new RuntimeException("line " + lineNum + ": 词法错误");
                 } else {
                     sb.append(c);
                     pos++;
                 }
             } else {
                 // TODO 词法错误的处理
-                throw new RuntimeException("line " + pos + ": 词法错误，错误类别码a：非法符号");
+                throw new RuntimeException("line " + lineNum + ": 词法错误，错误类别码a：非法符号 " + c);
             }
         }
         String formatString = sb.toString();

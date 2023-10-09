@@ -1,6 +1,6 @@
 package frontend.node;
 
-import frontend.Token;
+import frontend.token.Token;
 
 // 4.基本类型 BType
 public class BTypeNode extends Node {

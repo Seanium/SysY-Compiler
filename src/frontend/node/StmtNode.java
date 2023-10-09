@@ -1,7 +1,7 @@
 package frontend.node;
 
-import frontend.Token;
-import frontend.TokenType;
+import frontend.token.Token;
+import frontend.token.TokenType;
 
 import java.util.ArrayList;
 

@@ -1,6 +1,8 @@
 package frontend;
 
 import frontend.node.*;
+import frontend.token.Token;
+import frontend.token.TokenType;
 
 import java.util.ArrayList;
 
@@ -17,10 +19,10 @@ public class Parser {
         ArrayList<FuncDefNode> funcDefNodes = new ArrayList<>();
         MainFuncDefNode mainFuncDefNode = null;
         while (lexer.getType() == TokenType.CONSTTK || lexer.getType() == TokenType.INTTK || lexer.getType() == TokenType.VOIDTK) {
-            if (lexer.getType() == TokenType.INTTK && lexer.preRead().type == TokenType.MAINTK) { // MainFuncDef
+            if (lexer.getType() == TokenType.INTTK && lexer.preRead().getType() == TokenType.MAINTK) { // MainFuncDef
                 mainFuncDefNode = parseMainFuncDef();
                 break;
-            } else if (lexer.preRead(2).type == TokenType.LPARENT) { // FuncDef
+            } else if (lexer.preRead(2).getType() == TokenType.LPARENT) { // FuncDef
                 funcDefNodes.add(parseFuncDef());
             } else { // Decl
                 declNodes.add(parseDecl());
@@ -610,7 +612,7 @@ public class Parser {
     // FIRST(Ident '(' [FuncRParams] ')') = {Ident}     //预读'('进行判断
     // FIRST(UnaryOp UnaryExp) = {'+','−','!'}
     private UnaryExpNode parseUnaryExp() {
-        if (lexer.getType() == TokenType.IDENFR && lexer.preRead().type == TokenType.LPARENT) { // Ident '(' [FuncRParams] ')' //TODO preRead的测试
+        if (lexer.getType() == TokenType.IDENFR && lexer.preRead().getType() == TokenType.LPARENT) { // Ident '(' [FuncRParams] ')'
             Token ident = lexer.getCurToken();
             lexer.next();
             Token leftParen = lexer.getCurToken();

@@ -1,11 +1,11 @@
-package frontend;
+package frontend.token;
 
 public class Token {
     final TokenType type;
     final String value;
     final int lineNum;
 
-    Token(TokenType type, String value, int lineNum) {
+    public Token(TokenType type, String value, int lineNum) {
         this.type = type;
         this.value = value;
         this.lineNum = lineNum;
@@ -19,5 +19,9 @@ public class Token {
 
     public TokenType getType() {
         return type;
+    }
+
+    public String getValue() {
+        return value;
     }
 }

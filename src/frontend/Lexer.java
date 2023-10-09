@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.token.Token;
+import frontend.token.TokenType;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -45,7 +48,7 @@ public class Lexer {
             } else if (c == '\n') { // 换行符
                 lineNum++;
                 pos++;
-            } else if (Character.isDigit(c)) { // 1.整型常量    //TODO 现在包容了0开头的整数
+            } else if (Character.isDigit(c)) { // 1.整型常量    //暂时允许0开头的整数
                 curToken = getNumber();
             } else if (c == '_' || Character.isLetter(c)) { // 4~15.保留字 或 3.标识符
                 curToken = getWord();
@@ -285,11 +288,11 @@ public class Lexer {
     }
 
     public TokenType getType() {
-        return curToken.type;
+        return curToken.getType();
     }
 
     public String getValue() {
-        return curToken.value;
+        return curToken.getValue();
     }
 
 }

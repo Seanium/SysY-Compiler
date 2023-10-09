@@ -1,6 +1,6 @@
 package frontend.node;
 
-import frontend.Token;
+import frontend.token.Token;
 
 public class MainFuncDefNode extends Node {
     private final Token intToken;

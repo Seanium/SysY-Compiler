@@ -1,6 +1,6 @@
 package frontend.node;
 
-import frontend.Token;
+import frontend.token.Token;
 
 public class UnaryExpNode extends Node {
     private Token ident = null;

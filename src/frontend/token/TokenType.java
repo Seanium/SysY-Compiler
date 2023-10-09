@@ -1,4 +1,4 @@
-package frontend;
+package frontend.token;
 
 public enum TokenType {
     INTCON, // 整型常量

@@ -1,5 +1,6 @@
 package frontend;
 
+import frontend.error.ErrorList;
 import frontend.node.*;
 import frontend.token.Token;
 import frontend.token.TokenType;
@@ -7,10 +8,20 @@ import frontend.token.TokenType;
 import java.util.ArrayList;
 
 public class Parser {
-    private final Lexer lexer;
+    private static Parser instance;
+    private Lexer lexer;
+    private ErrorList errorList;
 
-    public Parser(Lexer lexer) {
+    private Parser(Lexer lexer) {
         this.lexer = lexer;
+        this.errorList = ErrorList.getInstance();
+    }
+
+    public static Parser getInstance(Lexer lexer) {
+        if (instance == null) {
+            instance = new Parser(lexer);
+        }
+        return instance;
     }
 
     // 1.编译单元 CompUnit → {Decl} {FuncDef} MainFuncDef // 1.是否存在Decl 2.是否存在FuncDef

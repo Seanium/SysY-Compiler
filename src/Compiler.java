@@ -1,5 +1,6 @@
 import frontend.Lexer;
 import frontend.Parser;
+import frontend.error.ErrorList;
 import frontend.node.CompUnitNode;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ public class Compiler {
     public static void main(String[] args) {
         String source = readFile("testfile.txt");
 //        System.out.println(source);
-        Lexer lexer = new Lexer(source);
+        Lexer lexer = Lexer.getInstance(source);
 
         // 词法分析作业
 //        String tokens = lexer.TokensToString(lexer.tokenize());
@@ -36,10 +37,11 @@ public class Compiler {
 //        writeFile("output.txt", tokens);
 
         // 语法分析作业
-        Parser parser = new Parser(lexer);
+        Parser parser = Parser.getInstance(lexer);
         CompUnitNode compUnitNode = parser.parseCompUnit();
         String parseResult = compUnitNode.toString();
-        System.out.println(parseResult);
+//        System.out.println(parseResult);
         writeFile("output.txt", parseResult);
+        System.out.println(ErrorList.getInstance());
     }
 }

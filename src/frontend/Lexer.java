@@ -1,5 +1,8 @@
 package frontend;
 
+import frontend.error.Error;
+import frontend.error.ErrorList;
+import frontend.error.ErrorType;
 import frontend.token.Token;
 import frontend.token.TokenType;
 
@@ -7,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Lexer {
+    private static Lexer instance;
+
     // 定义保留字表 (4.main ~ 15.void)
     private static final HashMap<String, TokenType> reservedWords = new HashMap<>() {{
         put("main", TokenType.MAINTK);          // 4.main
@@ -26,12 +31,21 @@ public class Lexer {
     private int pos;    // 当前读到的字符的位置
     private int lineNum;  // 当前读到的字符所在的行号
     private Token curToken;
+    private ErrorList errorList;
 
-    public Lexer(String input) {
+    private Lexer(String input) {
         this.input = input;
         this.pos = 0;
         this.lineNum = 1;
         this.next();
+        this.errorList = ErrorList.getInstance();
+    }
+
+    public static Lexer getInstance(String input) {
+        if (instance == null) {
+            instance = new Lexer(input);
+        }
+        return instance;
     }
 
     // curToken在文末为null, 其他时候均为有效值 (不包括空白字符和换行符)
@@ -66,17 +80,11 @@ public class Lexer {
                 if (nextC == '&') {
                     curToken = new Token(TokenType.AND, "&&", lineNum);
                     pos += 2;
-                } else {
-                    // TODO 词法错误的处理
-                    throw new RuntimeException("line " + lineNum + ": 词法错误");
                 }
             } else if (c == '|') {  // 18.||
                 if (nextC == '|') {
                     curToken = new Token(TokenType.OR, "||", lineNum);
                     pos += 2;
-                } else {
-                    // TODO 词法错误的处理
-                    throw new RuntimeException("line " + lineNum + ": 词法错误");
                 }
             } else if (c == '+') {  // 19.+
                 curToken = new Token(TokenType.PLUS, "+", lineNum);
@@ -100,6 +108,9 @@ public class Lexer {
                             pos += 2;
                             break;
                         } else {
+                            if (input.charAt(pos) == '\n') {
+                                lineNum++;
+                            }
                             pos++;
                         }
                     }
@@ -158,9 +169,6 @@ public class Lexer {
             } else if (c == '}') {  // 38.}
                 curToken = new Token(TokenType.RBRACE, "}", lineNum);
                 pos++;
-            } else {
-                // TODO 词法错误的处理
-                throw new RuntimeException("line " + lineNum + ": 词法错误");
             }
         }
     }
@@ -223,23 +231,26 @@ public class Lexer {
                 break;
             } else if (c == 32 || c == 33 || (c >= 40 && c <= 126)) {
                 if (c == '\\' && pos + 1 < input.length() && input.charAt(pos + 1) != 'n') {    // '\'后面必须连着'n'
-                    // TODO 词法错误的处理
-                    throw new RuntimeException("line " + lineNum + ": 词法错误");
+                    // 错误类型a【非法符号】
+                    errorList.addError(new Error(ErrorType.a, lineNum));
+                    pos++;
                 } else {
                     sb.append(c);
                     pos++;
                 }
             } else if (c == '%') {
                 if (pos + 1 < input.length() && input.charAt(pos + 1) != 'd') {   // '%'必须连着'd'
-                    // TODO 词法错误的处理
-                    throw new RuntimeException("line " + lineNum + ": 词法错误");
+                    // 错误类型a【非法符号】
+                    errorList.addError(new Error(ErrorType.a, lineNum));
+                    pos++;
                 } else {
                     sb.append(c);
                     pos++;
                 }
             } else {
-                // TODO 词法错误的处理
-                throw new RuntimeException("line " + lineNum + ": 词法错误，错误类别码a：非法符号 " + c);
+                // 错误类型a【非法符号】
+                errorList.addError(new Error(ErrorType.a, lineNum));
+                pos++;
             }
         }
         String formatString = sb.toString();

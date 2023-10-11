@@ -40,4 +40,8 @@ public class MulExpNode extends Node {
         sb.append("<MulExp>\n");
         return sb.toString();
     }
+
+    public int calDim() {
+        return unaryExpNode.calDim();
+    }
 }

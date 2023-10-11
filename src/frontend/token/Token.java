@@ -24,4 +24,8 @@ public class Token {
     public String getValue() {
         return value;
     }
+
+    public int getLineNum() {
+        return lineNum;
+    }
 }

@@ -1,5 +1,6 @@
 package frontend.node;
 
+import frontend.symbol.ArraySymbol;
 import frontend.token.Token;
 
 import java.util.ArrayList;
@@ -20,6 +21,14 @@ public class ConstDefNode extends Node {
         this.rightBrackets = rightBrackets;
         this.assign = assign;
         this.constInitValNode = constInitValNode;
+    }
+
+    public Token getIdent() {
+        return ident;
+    }
+
+    public ArraySymbol toArraySymbol() {
+        return new ArraySymbol(ident.getValue(), true, constExpNodes.size());
     }
 
     // 5.常数定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal // 包含普通变量、一维数组、二维数组共三种情况

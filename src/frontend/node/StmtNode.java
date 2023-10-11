@@ -115,6 +115,14 @@ public class StmtNode extends Node {
         this.semicn = semicn;
     }
 
+    public Token getReturnToken() {
+        return returnToken;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
     // 17.语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
     //| [Exp] ';' //有无Exp两种情况
     //| Block

@@ -12,6 +12,10 @@ public class BlockItemNode extends Node {
         this.stmtNode = stmtNode;
     }
 
+    public StmtNode getStmtNode() {
+        return stmtNode;
+    }
+
     // 16.语句块项 BlockItem → Decl | Stmt // 覆盖两种语句块项
     // FIRST(Decl) = FIRST(ConstDecl ) + FIRST(VarDecl) = {‘const’, ‘int’}
     @Override

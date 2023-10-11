@@ -31,7 +31,8 @@ public class Lexer {
     private int pos;    // 当前读到的字符的位置
     private int lineNum;  // 当前读到的字符所在的行号
     private Token curToken;
-    private ErrorList errorList;
+    private Token lastToken;    // 前一个Token
+    private final ErrorList errorList;
 
     private Lexer(String input) {
         this.input = input;
@@ -50,6 +51,7 @@ public class Lexer {
 
     // curToken在文末为null, 其他时候均为有效值 (不包括空白字符和换行符)
     public void next() {
+        lastToken = curToken;
         curToken = null;    // 重置 curToken
         while (curToken == null) {
             if (pos == input.length()) {
@@ -80,11 +82,15 @@ public class Lexer {
                 if (nextC == '&') {
                     curToken = new Token(TokenType.AND, "&&", lineNum);
                     pos += 2;
+                } else {
+                    throw new RuntimeException("line " + lineNum + ": 词法错误(非考察项) - \"&&\"不完整");
                 }
             } else if (c == '|') {  // 18.||
                 if (nextC == '|') {
                     curToken = new Token(TokenType.OR, "||", lineNum);
                     pos += 2;
+                } else {
+                    throw new RuntimeException("line " + lineNum + ": 词法错误(非考察项) - \"||\"不完整");
                 }
             } else if (c == '+') {  // 19.+
                 curToken = new Token(TokenType.PLUS, "+", lineNum);
@@ -169,6 +175,8 @@ public class Lexer {
             } else if (c == '}') {  // 38.}
                 curToken = new Token(TokenType.RBRACE, "}", lineNum);
                 pos++;
+            } else {
+                throw new RuntimeException("line " + lineNum + ": 词法错误(非考察项) - 字符 '" + c + "' 不在单词表中");
             }
         }
     }
@@ -294,16 +302,16 @@ public class Lexer {
         return String.valueOf(sb);
     }
 
+    public Token getLastToken() {
+        return lastToken;
+    }
+
     public Token getCurToken() {
         return curToken;
     }
 
     public TokenType getType() {
         return curToken.getType();
-    }
-
-    public String getValue() {
-        return curToken.getValue();
     }
 
 }

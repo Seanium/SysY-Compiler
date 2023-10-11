@@ -1,7 +1,7 @@
 package frontend.symbol;
 
 public class Symbol {
-    private String name;
+    private final String name;
 
     public Symbol(String name) {
         this.name = name;

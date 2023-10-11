@@ -38,4 +38,18 @@ public class AddExpNode extends Node {
         sb.append("<AddExp>\n");
         return sb.toString();
     }
+
+    public int calDim() {
+        int mulExpDim = mulExpNode.calDim();
+        if (addExpNode == null) {   // AddExp → MulExp
+            return mulExpDim;
+        } else {    // AddExp → AddExp ('+' | '−') MulExp
+            int addExpDim = addExpNode.calDim();
+            if (mulExpDim != addExpDim) {   // 两部分维度不一致, 则返回-1
+                return -1;
+            } else {
+                return mulExpDim;
+            }
+        }
+    }
 }

@@ -1,5 +1,7 @@
 package frontend.node;
 
+import frontend.symbol.ArraySymbol;
+import frontend.symbol.Param;
 import frontend.token.Token;
 
 import java.util.ArrayList;
@@ -19,7 +21,18 @@ public class FuncFParamNode extends Node {
         this.rightBrackets = rightBrackets;
     }
 
+    public Token getIdent() {
+        return ident;
+    }
+
+    public Param toParam() {
+        return new Param(ident.getValue(), leftBrackets.size());
+    }
+
     // 14.函数形参 FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }] // 1.普通变量2.一维数组变量 3.二维数组变量
+    public ArraySymbol toArraySymbol() {
+        return new ArraySymbol(ident.getValue(), false, leftBrackets.size());
+    }
 
     @Override
     public String toString() {
@@ -40,4 +53,6 @@ public class FuncFParamNode extends Node {
         sb.append("<FuncFParam>\n");
         return sb.toString();
     }
+
+
 }

@@ -39,9 +39,13 @@ public class Compiler {
         // 语法分析作业
         Parser parser = Parser.getInstance(lexer);
         CompUnitNode compUnitNode = parser.parseCompUnit();
-        String parseResult = compUnitNode.toString();
+//        String parseResult = compUnitNode.toString();
 //        System.out.println(parseResult);
-        writeFile("output.txt", parseResult);
-        System.out.println(ErrorList.getInstance());
+//        writeFile("output.txt", parseResult);
+
+        // 错误处理作业
+        String errorListStr = ErrorList.getInstance().toString();
+        System.out.println(errorListStr);
+        writeFile("error.txt", errorListStr);
     }
 }

@@ -55,4 +55,14 @@ public class PrimaryExpNode extends Node {
         sb.append("<PrimaryExp>\n");
         return sb.toString();
     }
+
+    public int calDim() {
+        if (expNode != null) {  // PrimaryExp → '(' Exp ')'
+            return expNode.calDim();
+        } else if (lValNode != null) {  // PrimaryExp → LVal
+            return lValNode.calDim();
+        } else {
+            return 0;   // PrimaryExp → Number
+        }
+    }
 }

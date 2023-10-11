@@ -1,7 +1,10 @@
 package frontend;
 
+import frontend.error.Error;
 import frontend.error.ErrorList;
+import frontend.error.ErrorType;
 import frontend.node.*;
+import frontend.symbol.*;
 import frontend.token.Token;
 import frontend.token.TokenType;
 
@@ -9,12 +12,18 @@ import java.util.ArrayList;
 
 public class Parser {
     private static Parser instance;
-    private Lexer lexer;
-    private ErrorList errorList;
+    private final Lexer lexer;
+    private final ErrorList errorList;
+    private final SymbolTables symbolTables;
+    private int loopDepth;  // 循环深度，用于检测错误m【在非循环块中使用break和continue语句】
+    private boolean allowAddTable;  // 标记是否允许创建符号表，用于控制函数形参与第一层Block为同一张符号表
 
     private Parser(Lexer lexer) {
         this.lexer = lexer;
         this.errorList = ErrorList.getInstance();
+        this.symbolTables = SymbolTables.getInstance();
+        this.loopDepth = 0;
+        this.allowAddTable = true;
     }
 
     public static Parser getInstance(Lexer lexer) {
@@ -29,6 +38,7 @@ public class Parser {
         ArrayList<DeclNode> declNodes = new ArrayList<>();
         ArrayList<FuncDefNode> funcDefNodes = new ArrayList<>();
         MainFuncDefNode mainFuncDefNode = null;
+        symbolTables.addTable();    // 编译单元的符号表
         while (lexer.getType() == TokenType.CONSTTK || lexer.getType() == TokenType.INTTK || lexer.getType() == TokenType.VOIDTK) {
             if (lexer.getType() == TokenType.INTTK && lexer.preRead().getType() == TokenType.MAINTK) { // MainFuncDef
                 mainFuncDefNode = parseMainFuncDef();
@@ -39,6 +49,7 @@ public class Parser {
                 declNodes.add(parseDecl());
             }
         }
+        symbolTables.removeTable();
         return new CompUnitNode(declNodes, funcDefNodes, mainFuncDefNode);
     }
 
@@ -70,9 +81,20 @@ public class Parser {
             if (lexer.getType() == TokenType.SEMICN) {
                 Token semicn = lexer.getCurToken();
                 lexer.next();
+                // 将常量声明加入符号表
+                if (!constDefNodes.isEmpty()) {
+                    for (ConstDefNode constDefNode : constDefNodes) {
+                        // 错误类型b【名字重定义】
+                        if (!symbolTables.addSymbol(constDefNode.toArraySymbol())) {
+                            errorList.addError(new Error(ErrorType.b, constDefNode.getIdent().getLineNum()));
+                        }
+                    }
+                }
                 return new ConstDeclNode(constToken, bTypeNode, constDefNodes, commas, semicn);
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型i【缺少分号】
+                errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                return new ConstDeclNode(constToken, bTypeNode, constDefNodes, commas, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
             }
         } else {
             return null;
@@ -106,7 +128,9 @@ public class Parser {
                     rightBrackets.add(lexer.getCurToken());
                     lexer.next();
                 } else {
-                    throw new RuntimeException("错误类别码k: 缺少右中括号']'");    //TODO 错误处理行号
+                    // 错误类型k【缺少右中括号’]’】
+                    errorList.addError(new Error(ErrorType.k, lexer.getLastToken().getLineNum()));
+                    rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                 }
             }
             if (lexer.getType() == TokenType.ASSIGN) {
@@ -167,9 +191,20 @@ public class Parser {
         if (lexer.getType() == TokenType.SEMICN) {
             Token semicn = lexer.getCurToken();
             lexer.next();
+            // 将变量声明加入符号表
+            if (!varDefNodes.isEmpty()) {
+                for (VarDefNode varDefNode : varDefNodes) {
+                    // 错误类型b【名字重定义】
+                    if (!symbolTables.addSymbol(varDefNode.toArraySymbol())) {
+                        errorList.addError(new Error(ErrorType.b, varDefNode.getIdent().getLineNum()));
+                    }
+                }
+            }
             return new VarDeclNode(bTypeNode, varDefNodes, commas, semicn);
         } else {
-            throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+            // 错误类型i【缺少分号】
+            errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+            return new VarDeclNode(bTypeNode, varDefNodes, commas, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
         }
     }
 
@@ -190,7 +225,9 @@ public class Parser {
                     rightBrackets.add(lexer.getCurToken());
                     lexer.next();
                 } else {
-                    throw new RuntimeException("错误类别码k: 缺少右中括号']'");    //TODO 错误处理行号
+                    // 错误类型k【缺少右中括号’]’】
+                    errorList.addError(new Error(ErrorType.k, lexer.getLastToken().getLineNum()));
+                    rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                 }
             }
             if (lexer.getType() == TokenType.ASSIGN) {
@@ -244,14 +281,53 @@ public class Parser {
         lexer.next();
         Token leftParen = lexer.getCurToken();
         lexer.next();
-        FuncFParamsNode funcFParamsNode = lexer.getType() == TokenType.INTTK ? parseFuncFParams() : null;
-        if (lexer.getType() == TokenType.RPARENT) {
+        FuncFParamsNode funcFParamsNode = lexer.getType() == TokenType.INTTK ? parseFuncFParams() : null;   //有形参还是无形参
+        // 将函数加入编译单元的符号表
+        ArrayList<Param> params = funcFParamsNode == null ? new ArrayList<>() : funcFParamsNode.toParams(); // 有形参还是无形参
+        // 错误类型b【名字重定义】
+        if (!symbolTables.addSymbol(new FuncSymbol(ident.getValue(), params, funcTypeNode.isVoid()))) {
+            errorList.addError(new Error(ErrorType.b, ident.getLineNum()));
+        }
+        // 创建形参和第一层Block的符号表
+        symbolTables.addTable();
+        allowAddTable = false;
+        // 将形参加入形参的符号表
+        if (funcFParamsNode != null) {
+            for (FuncFParamNode funcFParamNode : funcFParamsNode.getFuncFParamNodes()) {
+                // 错误类型b【名字重定义】
+                if (!symbolTables.addSymbol(funcFParamNode.toArraySymbol())) {
+                    errorList.addError(new Error(ErrorType.b, funcFParamNode.getIdent().getLineNum()));
+                }
+            }
+        }
+        if (lexer.getType() == TokenType.RPARENT) { // 如果存在右小括号
             Token rightParen = lexer.getCurToken();
             lexer.next();
             BlockNode blockNode = parseBlock();
+            if (!blockNode.hasReturnInt() && !funcTypeNode.isVoid()) {
+                // 错误类型g【有返回值的函数缺少return语句】
+                int lineNumOfRBRACE = lexer.getLastToken().getLineNum();
+                errorList.addError(new Error(ErrorType.g, lineNumOfRBRACE));
+            } else if (blockNode.hasReturnInt() && funcTypeNode.isVoid()) {
+                // 错误类型f【无返回值的函数存在不匹配的return语句】
+                int lineNumOfRETURNTK = blockNode.getRETURNTK().getLineNum();
+                errorList.addError(new Error(ErrorType.f, lineNumOfRETURNTK));
+            }
             return new FuncDefNode(funcTypeNode, ident, leftParen, funcFParamsNode, rightParen, blockNode);
-        } else {
-            throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+        } else {    // 如果不存在右小括号
+            // 错误类型j【缺少右小括号’)’】
+            errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+            BlockNode blockNode = parseBlock();     //接着解析block
+            if (!blockNode.hasReturnInt() && !funcTypeNode.isVoid()) {
+                // 错误类型g【有返回值的函数缺少return语句】
+                int lineNumOfRBRACE = lexer.getLastToken().getLineNum();
+                errorList.addError(new Error(ErrorType.g, lineNumOfRBRACE));
+            } else if (blockNode.hasReturnInt() && funcTypeNode.isVoid()) {
+                // 错误类型f【无返回值的函数存在不匹配的return语句】
+                int lineNumOfRETURNTK = blockNode.getRETURNTK().getLineNum();
+                errorList.addError(new Error(ErrorType.f, lineNumOfRETURNTK));
+            }
+            return new FuncDefNode(funcTypeNode, ident, leftParen, funcFParamsNode, new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum()), blockNode);
         }
     }
 
@@ -263,13 +339,31 @@ public class Parser {
         lexer.next();
         Token leftParen = lexer.getCurToken();
         lexer.next();
+        // 将main函数加入编译单元的符号表
+        // 错误类型b【名字重定义】
+        if (!symbolTables.addSymbol(new FuncSymbol(mainToken.getValue(), new ArrayList<>(), false))) {
+            errorList.addError(new Error(ErrorType.b, mainToken.getLineNum()));
+        }
         if (lexer.getType() == TokenType.RPARENT) {
             Token rightParen = lexer.getCurToken();
             lexer.next();
             BlockNode blockNode = parseBlock();
+            if (!blockNode.hasReturnInt()) {
+                // 错误类型g【有返回值的函数缺少return语句】
+                int lineNumOfRBRACE = lexer.getLastToken().getLineNum();
+                errorList.addError(new Error(ErrorType.g, lineNumOfRBRACE));
+            }
             return new MainFuncDefNode(intToken, mainToken, leftParen, rightParen, blockNode);
         } else {
-            throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+            // 错误类型j【缺少右小括号’)’】
+            errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+            BlockNode blockNode = parseBlock();     //接着解析block
+            if (!blockNode.hasReturnInt()) {
+                // 错误类型g【有返回值的函数缺少return语句】
+                int lineNumOfRBRACE = lexer.getLastToken().getLineNum();
+                errorList.addError(new Error(ErrorType.g, lineNumOfRBRACE));
+            }
+            return new MainFuncDefNode(intToken, mainToken, leftParen, new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum()), blockNode);
         }
     }
 
@@ -318,7 +412,9 @@ public class Parser {
                     rightBrackets.add(lexer.getCurToken());
                     lexer.next();
                 } else {
-                    throw new RuntimeException("错误类别码k: 缺少右中括号']'");    //TODO 错误处理行号
+                    // 错误类型k【缺少右中括号’]’】
+                    errorList.addError(new Error(ErrorType.k, lexer.getLastToken().getLineNum()));
+                    rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                 }
                 while (lexer.getType() == TokenType.LBRACK) {
                     leftBrackets.add(lexer.getCurToken());
@@ -328,7 +424,9 @@ public class Parser {
                         rightBrackets.add(lexer.getCurToken());
                         lexer.next();
                     } else {
-                        throw new RuntimeException("错误类别码k: 缺少右中括号']'");    //TODO 错误处理行号
+                        // 错误类型k【缺少右中括号’]’】
+                        errorList.addError(new Error(ErrorType.k, lexer.getLastToken().getLineNum()));
+                        rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                     }
                 }
             }
@@ -340,6 +438,12 @@ public class Parser {
 
     // 15.语句块 Block → '{' { BlockItem } '}' // 1.花括号内重复0次 2.花括号内重复多次
     private BlockNode parseBlock() {
+        // 创建Block的符号表(除了函数定义的第一层Block, 它与形参共享符号表)
+        if (allowAddTable) {    // 当前不是函数定义的Block，需要创建符号表
+            symbolTables.addTable();
+        } else {    // 当前是函数定义的Block，无需创建符号表(与形参时创建的共享即可)，只需重置为允许创建
+            allowAddTable = true;
+        }
         Token leftBrace = lexer.getCurToken();
         lexer.next();
         ArrayList<BlockItemNode> blockItemNodes = new ArrayList<>();
@@ -348,6 +452,7 @@ public class Parser {
         }
         Token rightBrace = lexer.getCurToken();
         lexer.next();
+        symbolTables.removeTable();
         return new BlockNode(leftBrace, blockItemNodes, rightBrace);
     }
 
@@ -394,7 +499,18 @@ public class Parser {
                     return new StmtNode(ifToken, leftParen, condNode, rightParen, stmtNode1, null, null);   // 无else
                 }
             } else {
-                throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+                // 错误类型j【缺少右小括号’)’】
+                errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+                Token rightParen = new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum());
+                StmtNode stmtNode1 = parseStmt();
+                if (lexer.getType() == TokenType.ELSETK) {
+                    Token elseToken = lexer.getCurToken();
+                    lexer.next();
+                    StmtNode stmtNode2 = parseStmt();
+                    return new StmtNode(ifToken, leftParen, condNode, rightParen, stmtNode1, elseToken, stmtNode2); // 有else
+                } else {
+                    return new StmtNode(ifToken, leftParen, condNode, rightParen, stmtNode1, null, null);   // 无else
+                }
             }
         } else if (lexer.getType() == TokenType.FORTK) {    // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省 2. 缺省第一个 ForStmt 3. 缺省Cond 4. 缺省第二个ForStmt
             Token forToken = lexer.getCurToken();
@@ -413,18 +529,24 @@ public class Parser {
                     if (lexer.getType() == TokenType.RPARENT) {
                         Token rightParen = lexer.getCurToken();
                         lexer.next();
+                        loopDepth++;
                         StmtNode stmtNode = parseStmt();
+                        loopDepth--;
                         return new StmtNode(forToken, leftParen, forStmtNode1, semicn1, condNode, semicn2, forStmtNode2, rightParen, stmtNode);
                     } else {
-                        throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+                        throw new RuntimeException("line " + lexer.getLastToken().getLineNum() + ": 语法错误(非考察项) - for循环缺少右小括号')'");
                     }
                 } else {
-                    throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                    throw new RuntimeException("line " + lexer.getLastToken().getLineNum() + ": 语法错误(非考察项) - for循环第2个表达式后缺少分号';'");
                 }
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                throw new RuntimeException("line " + lexer.getLastToken().getLineNum() + ": 语法错误(非考察项) - for循环第1个表达式后缺少分号';'");
             }
         } else if (lexer.getType() == TokenType.BREAKTK) {  // 'break' ';'
+            if (loopDepth == 0) {
+                // 错误类型m【在非循环块中使用break和continue语句】
+                errorList.addError(new Error(ErrorType.m, lexer.getCurToken().getLineNum()));
+            }
             Token breakToken = lexer.getCurToken();
             lexer.next();
             if (lexer.getType() == TokenType.SEMICN) {
@@ -432,9 +554,15 @@ public class Parser {
                 lexer.next();
                 return new StmtNode(breakToken, semicn);
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型i【缺少分号】
+                errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                return new StmtNode(breakToken, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
             }
         } else if (lexer.getType() == TokenType.CONTINUETK) {   // 'continue' ';'
+            if (loopDepth == 0) {
+                // 错误类型m【在非循环块中使用break和continue语句】
+                errorList.addError(new Error(ErrorType.m, lexer.getCurToken().getLineNum()));
+            }
             Token continueToken = lexer.getCurToken();
             lexer.next();
             if (lexer.getType() == TokenType.SEMICN) {
@@ -442,7 +570,9 @@ public class Parser {
                 lexer.next();
                 return new StmtNode(continueToken, semicn);
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型i【缺少分号】
+                errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                return new StmtNode(continueToken, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
             }
         } else if (lexer.getType() == TokenType.RETURNTK) { // 'return' [Exp] ';' // 1.有Exp 2.无Exp
             Token returnToken = lexer.getCurToken();
@@ -453,7 +583,9 @@ public class Parser {
                 lexer.next();
                 return new StmtNode(returnToken, expNode, semicn);
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型i【缺少分号】
+                errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                return new StmtNode(returnToken, expNode, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
             }
         } else if (lexer.getType() == TokenType.PRINTFTK) { // 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
             Token printfToken = lexer.getCurToken();
@@ -469,14 +601,38 @@ public class Parser {
                 lexer.next();
                 expNodes.add(parseExp());
             }
-            Token rightParen = lexer.getCurToken();
-            lexer.next();
-            if (lexer.getType() == TokenType.SEMICN) {
-                Token semicn = lexer.getCurToken();
+            String str = formatString.getValue();
+            String format = "%d";
+            int formatCnt = (str.length() - str.replace(format, "").length()) / format.length();
+            if (formatCnt != expNodes.size()) {
+                // 错误类型l【printf中格式字符与表达式个数不匹配】
+                errorList.addError(new Error(ErrorType.l, printfToken.getLineNum()));
+            }
+            if (lexer.getType() == TokenType.RPARENT) {
+                Token rightParen = lexer.getCurToken();
                 lexer.next();
-                return new StmtNode(printfToken, leftParen, formatString, commas, expNodes, rightParen, semicn);
+                if (lexer.getType() == TokenType.SEMICN) {
+                    Token semicn = lexer.getCurToken();
+                    lexer.next();
+                    return new StmtNode(printfToken, leftParen, formatString, commas, expNodes, rightParen, semicn);
+                } else {
+                    // 错误类型i【缺少分号】
+                    errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                    return new StmtNode(printfToken, leftParen, formatString, commas, expNodes, rightParen, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
+                }
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型j【缺少右小括号’)’】
+                errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+                Token rightParen = new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum());
+                if (lexer.getType() == TokenType.SEMICN) {
+                    Token semicn = lexer.getCurToken();
+                    lexer.next();
+                    return new StmtNode(printfToken, leftParen, formatString, commas, expNodes, rightParen, semicn);
+                } else {
+                    // 错误类型i【缺少分号】
+                    errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                    return new StmtNode(printfToken, leftParen, formatString, commas, expNodes, rightParen, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
+                }
             }
         } else if (lexer.getType() == TokenType.SEMICN) {   // [Exp] ';' //无Exp的情况，即空语句';'
             Token semicn = lexer.getCurToken();
@@ -486,18 +642,25 @@ public class Parser {
             // Stmt → LVal '=' Exp ';'			//FIRST={Ident}
             //| [Exp] ';'						//FIRST={‘(’,Ident,Number,'+','−','!'}
             //| LVal '=' 'getint''('')'';' 	//FIRST={Ident}
-            ExpNode expNode = parseExp();
+            ExpNode expNode = parseExp();   // 解析 exp
             if (lexer.getType() == TokenType.SEMICN) {  // [Exp] ';' //有Exp的情况
                 Token semicn = lexer.getCurToken();
                 lexer.next();
                 return new StmtNode(expNode, semicn);
-            } else if (lexer.getType() == TokenType.ASSIGN) {
+            } else if (lexer.getType() == TokenType.ASSIGN) {   // 解析 '='
                 LValNode lValNode = getLValNodeFromExpNode(expNode); // 从ExpNode中提取LValNode
                 Token assign = lexer.getCurToken();
                 lexer.next();
                 if (lexer.getType() == TokenType.GETINTTK) {    // LVal '=' 'getint''('')'';'
                     Token getintToken = lexer.getCurToken();
                     lexer.next();
+                    // 错误类型h【不能改变常量的值】
+                    Symbol symbol;
+                    if ((symbol = symbolTables.findSymbol(lValNode.getIdent().getValue())) != null) {
+                        if (symbol instanceof ArraySymbol && ((ArraySymbol) symbol).isConst()) {
+                            errorList.addError(new Error(ErrorType.h, lValNode.getIdent().getLineNum()));
+                        }
+                    }
                     Token leftParen = lexer.getCurToken();
                     lexer.next();
                     if (lexer.getType() == TokenType.RPARENT) {
@@ -508,23 +671,47 @@ public class Parser {
                             lexer.next();
                             return new StmtNode(lValNode, assign, getintToken, leftParen, rightParen, semicn);
                         } else {
-                            throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                            // 错误类型i【缺少分号】
+                            errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                            return new StmtNode(lValNode, assign, getintToken, leftParen, rightParen, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
                         }
                     } else {
-                        throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+                        // 错误类型j【缺少右小括号’)’】
+                        errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+                        Token rightParen = new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum());
+                        if (lexer.getType() == TokenType.SEMICN) {
+                            Token semicn = lexer.getCurToken();
+                            lexer.next();
+                            return new StmtNode(lValNode, assign, getintToken, leftParen, rightParen, semicn);
+                        } else {
+                            // 错误类型i【缺少分号】
+                            errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                            return new StmtNode(lValNode, assign, getintToken, leftParen, rightParen, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
+                        }
                     }
                 } else {
                     expNode = parseExp();
                     if (lexer.getType() == TokenType.SEMICN) {  // Stmt → LVal '=' Exp ';'
                         Token semicn = lexer.getCurToken();
                         lexer.next();
+                        // 错误类型h【不能改变常量的值】
+                        Symbol symbol;
+                        if ((symbol = symbolTables.findSymbol(lValNode.getIdent().getValue())) != null) {
+                            if (symbol instanceof ArraySymbol && ((ArraySymbol) symbol).isConst()) {
+                                errorList.addError(new Error(ErrorType.h, lValNode.getIdent().getLineNum()));
+                            }
+                        }
                         return new StmtNode(lValNode, assign, expNode, semicn);
                     } else {
-                        throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                        // 错误类型i【缺少分号】
+                        errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                        return new StmtNode(lValNode, assign, expNode, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
                     }
                 }
             } else {
-                throw new RuntimeException("错误类别码i: 缺少分号';'");    //TODO 错误处理行号
+                // 错误类型i【缺少分号】
+                errorList.addError(new Error(ErrorType.i, lexer.getLastToken().getLineNum()));
+                return new StmtNode(expNode, new Token(TokenType.SEMICN, ";", lexer.getLastToken().getLineNum()));
             }
         } else {
             return null;
@@ -538,6 +725,13 @@ public class Parser {
             if (lexer.getType() == TokenType.ASSIGN) {
                 Token assign = lexer.getCurToken();
                 lexer.next();
+                // 错误类型h【不能改变常量的值】
+                Symbol symbol;
+                if ((symbol = symbolTables.findSymbol(lValNode.getIdent().getValue())) != null) {
+                    if (symbol instanceof ArraySymbol && ((ArraySymbol) symbol).isConst()) {
+                        errorList.addError(new Error(ErrorType.h, lValNode.getIdent().getLineNum()));
+                    }
+                }
                 ExpNode expNode = parseExp();
                 return new ForStmtNode(lValNode, assign, expNode);
             } else {
@@ -563,6 +757,10 @@ public class Parser {
         if (lexer.getType() == TokenType.IDENFR) {
             Token ident = lexer.getCurToken();
             lexer.next();
+            // 错误类型c【未定义的名字】
+            if (symbolTables.findSymbol(ident.getValue()) == null) {
+                errorList.addError(new Error(ErrorType.c, ident.getLineNum()));
+            }
             ArrayList<Token> leftBrackets = new ArrayList<>();
             ArrayList<ExpNode> expNodes = new ArrayList<>();
             ArrayList<Token> rightBrackets = new ArrayList<>();
@@ -574,7 +772,9 @@ public class Parser {
                     rightBrackets.add(lexer.getCurToken());
                     lexer.next();
                 } else {
-                    throw new RuntimeException("错误类别码k: 缺少右中括号']'");    //TODO 错误处理行号
+                    // 错误类型k【缺少右中括号’]’】
+                    errorList.addError(new Error(ErrorType.k, lexer.getLastToken().getLineNum()));
+                    rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                 }
             }
             return new LValNode(ident, leftBrackets, expNodes, rightBrackets);
@@ -594,7 +794,7 @@ public class Parser {
                 lexer.next();
                 return new PrimaryExpNode(leftParen, expNode, rightParen);
             } else {
-                throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 这里的报错没有在表格中出现？？错误处理行号
+                throw new RuntimeException("line " + lexer.getLastToken().getLineNum() + ": 语法错误(非考察项) - 括号表达式缺少右小括号')'");
             }
         } else if (lexer.getType() == TokenType.IDENFR) {
             return new PrimaryExpNode(parseLVal());
@@ -626,23 +826,49 @@ public class Parser {
         if (lexer.getType() == TokenType.IDENFR && lexer.preRead().getType() == TokenType.LPARENT) { // Ident '(' [FuncRParams] ')'
             Token ident = lexer.getCurToken();
             lexer.next();
+            // 错误类型c【未定义的名字】
+            if (symbolTables.findSymbol(ident.getValue()) == null) {
+                errorList.addError(new Error(ErrorType.c, ident.getLineNum()));
+            }
             Token leftParen = lexer.getCurToken();
             lexer.next();
-            if (isFirstOfFuncRParams()) {
+            if (isFirstOfFuncRParams()) {   // 实参非空
                 FuncRParamsNode funcRParamsNode = parseFuncRParams();
+                // 错误类型d【函数参数个数不匹配】, 错误类型e【函数参数类型不匹配】
+                Symbol symbol;
+                if ((symbol = symbolTables.findSymbol(ident.getValue())) != null && symbol instanceof FuncSymbol) { // 首先确保函数在符号表内有定义
+                    ArrayList<Param> realParams = funcRParamsNode.toParams();
+                    ErrorType errorType;
+                    if ((errorType = symbolTables.matchFuncParam(((FuncSymbol) symbol).getParams(), realParams)) != null) {
+                        errorList.addError(new Error(errorType, ident.getLineNum()));
+                    }
+                }
                 if (lexer.getType() == TokenType.RPARENT) {
                     Token rightParen = lexer.getCurToken();
                     lexer.next();
                     return new UnaryExpNode(ident, leftParen, funcRParamsNode, rightParen);
                 } else {
-                    throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+                    // 错误类型j【缺少右小括号’)’】
+                    errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+                    return new UnaryExpNode(ident, leftParen, funcRParamsNode, new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum()));
                 }
-            } else if (lexer.getType() == TokenType.RPARENT) {
+            } else if (lexer.getType() == TokenType.RPARENT) {  // 实参为空
+                // 错误类型d【函数参数个数不匹配】, 错误类型e【函数参数类型不匹配】
+                Symbol symbol;
+                if ((symbol = symbolTables.findSymbol(ident.getValue())) != null && symbol instanceof FuncSymbol) { // 首先确保函数在符号表内有定义
+                    ArrayList<Param> realParams = new ArrayList<>();
+                    ErrorType errorType;
+                    if ((errorType = symbolTables.matchFuncParam(((FuncSymbol) symbol).getParams(), realParams)) != null) {
+                        errorList.addError(new Error(errorType, ident.getLineNum()));
+                    }
+                }
                 Token rightParen = lexer.getCurToken();
                 lexer.next();
                 return new UnaryExpNode(ident, leftParen, null, rightParen);
             } else {
-                throw new RuntimeException("错误类别码j: 缺少右小括号')'");    //TODO 错误处理行号
+                // 错误类型j【缺少右小括号’)’】
+                errorList.addError(new Error(ErrorType.j, lexer.getLastToken().getLineNum()));
+                return new UnaryExpNode(ident, leftParen, null, new Token(TokenType.RPARENT, ")", lexer.getLastToken().getLineNum()));
             }
         } else if (lexer.getType() == TokenType.PLUS || lexer.getType() == TokenType.MINU || lexer.getType() == TokenType.NOT) {
             UnaryOpNode unaryOpNode = parseUnaryOp();

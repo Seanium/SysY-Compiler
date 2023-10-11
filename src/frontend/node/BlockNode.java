@@ -15,6 +15,34 @@ public class BlockNode extends Node {
         this.rightBrace = rightBrace;
     }
 
+    // 是否在最后有return语句
+    private Boolean isLastBlockItemNodeReturn() {
+        if (blockItemNodes.isEmpty()) {
+            return false;
+        }
+        if (blockItemNodes.get(blockItemNodes.size() - 1).getStmtNode() == null) {
+            return false;
+        }
+        return blockItemNodes.get(blockItemNodes.size() - 1).getStmtNode().getReturnToken() != null;
+    }
+
+    // 有return值的语句, 返回true;
+    // 没有return语句或有返回空的语句, 返回false
+    public Boolean hasReturnInt() {
+        if (!isLastBlockItemNodeReturn()) {
+            return false;
+        } else {
+            return blockItemNodes.get(blockItemNodes.size() - 1).getStmtNode().getExpNode() != null;
+        }
+    }
+
+    public Token getRETURNTK() {
+        if (!isLastBlockItemNodeReturn()) {
+            return null;
+        }
+        return blockItemNodes.get(blockItemNodes.size() - 1).getStmtNode().getReturnToken();
+    }
+
     // 15.语句块 Block → '{' { BlockItem } '}' // 1.花括号内重复0次 2.花括号内重复多次
     @Override
     public String toString() {

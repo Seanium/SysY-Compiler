@@ -1,5 +1,6 @@
 package frontend.node;
 
+import frontend.symbol.ArraySymbol;
 import frontend.token.Token;
 
 import java.util.ArrayList;
@@ -28,6 +29,14 @@ public class VarDefNode extends Node {
         this.rightBrackets = rightBrackets;
         this.assign = null;
         this.initValNode = null;
+    }
+
+    public Token getIdent() {
+        return ident;
+    }
+
+    public ArraySymbol toArraySymbol() {
+        return new ArraySymbol(ident.getValue(), false, constExpNodes.size());
     }
 
     // 8.变量定义 VarDef → Ident { '[' ConstExp ']' } // 包含普通变量、一维数组、二维数组定义

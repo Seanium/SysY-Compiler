@@ -1,5 +1,8 @@
 package frontend.node;
 
+import frontend.symbol.FuncSymbol;
+import frontend.symbol.Symbol;
+import frontend.symbol.SymbolTables;
 import frontend.token.Token;
 
 public class UnaryExpNode extends Node {
@@ -55,5 +58,25 @@ public class UnaryExpNode extends Node {
         }
         sb.append("<UnaryExp>\n");
         return sb.toString();
+    }
+
+    public int calDim() {
+        if (primaryExpNode != null) {   // UnaryExp → PrimaryExp
+            return primaryExpNode.calDim();
+        } else if (ident != null) { // UnaryExp → Ident '(' [FuncRParams] ')'
+            SymbolTables symbolTables = SymbolTables.getInstance();
+            Symbol symbol = symbolTables.findSymbol(ident.getValue());
+            if (symbol instanceof FuncSymbol) {
+                if (((FuncSymbol) symbol).isVoid()) {
+                    return -1;  // 返回void的函数
+                } else {
+                    return 0;   // 返回int的函数
+                }
+            } else {
+                return -1;  // 调用的函数未声明, 返回-1
+            }
+        } else {    // UnaryExp → UnaryOp UnaryExp
+            return unaryExpNode.calDim();
+        }
     }
 }

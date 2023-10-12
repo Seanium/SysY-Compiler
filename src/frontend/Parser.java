@@ -758,7 +758,8 @@ public class Parser {
             Token ident = lexer.getCurToken();
             lexer.next();
             // 错误类型c【未定义的名字】
-            if (symbolTables.findSymbol(ident.getValue()) == null) {
+            Symbol symbol = symbolTables.findSymbol(ident.getValue());
+            if (symbol == null || symbol instanceof FuncSymbol) {
                 errorList.addError(new Error(ErrorType.c, ident.getLineNum()));
             }
             ArrayList<Token> leftBrackets = new ArrayList<>();
@@ -827,7 +828,8 @@ public class Parser {
             Token ident = lexer.getCurToken();
             lexer.next();
             // 错误类型c【未定义的名字】
-            if (symbolTables.findSymbol(ident.getValue()) == null) {
+            Symbol symbol = symbolTables.findSymbol(ident.getValue());
+            if (symbol == null || symbol instanceof ArraySymbol) {  // 必须是函数名，不能是变量名
                 errorList.addError(new Error(ErrorType.c, ident.getLineNum()));
             }
             Token leftParen = lexer.getCurToken();
@@ -835,7 +837,6 @@ public class Parser {
             if (isFirstOfFuncRParams()) {   // 实参非空
                 FuncRParamsNode funcRParamsNode = parseFuncRParams();
                 // 错误类型d【函数参数个数不匹配】, 错误类型e【函数参数类型不匹配】
-                Symbol symbol;
                 if ((symbol = symbolTables.findSymbol(ident.getValue())) != null && symbol instanceof FuncSymbol) { // 首先确保函数在符号表内有定义
                     ArrayList<Param> realParams = funcRParamsNode.toParams();
                     ErrorType errorType;
@@ -854,7 +855,6 @@ public class Parser {
                 }
             } else if (lexer.getType() == TokenType.RPARENT) {  // 实参为空
                 // 错误类型d【函数参数个数不匹配】, 错误类型e【函数参数类型不匹配】
-                Symbol symbol;
                 if ((symbol = symbolTables.findSymbol(ident.getValue())) != null && symbol instanceof FuncSymbol) { // 首先确保函数在符号表内有定义
                     ArrayList<Param> realParams = new ArrayList<>();
                     ErrorType errorType;

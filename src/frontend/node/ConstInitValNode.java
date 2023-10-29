@@ -48,4 +48,8 @@ public class ConstInitValNode extends Node {
         sb.append("<ConstInitVal>\n");
         return sb.toString();
     }
+
+    public ConstExpNode getConstExpNode() {
+        return constExpNode;
+    }
 }

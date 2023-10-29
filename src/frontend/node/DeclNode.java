@@ -23,4 +23,12 @@ public class DeclNode extends Node {
             return varDeclNode.toString();
         }
     }
+
+    public ConstDeclNode getConstDeclNode() {
+        return constDeclNode;
+    }
+
+    public VarDeclNode getVarDeclNode() {
+        return varDeclNode;
+    }
 }

@@ -34,4 +34,8 @@ public class ConstDeclNode extends Node {
         sb.append("<ConstDecl>\n");
         return sb.toString();
     }
+
+    public ArrayList<ConstDefNode> getConstDefNodes() {
+        return constDefNodes;
+    }
 }

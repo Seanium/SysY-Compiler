@@ -14,4 +14,8 @@ public class NumberNode extends Node {
     public String toString() {
         return intConst.toString() + "<Number>\n";
     }
+
+    public Token getIntConst() {
+        return intConst;
+    }
 }

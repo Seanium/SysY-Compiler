@@ -57,4 +57,12 @@ public class VarDefNode extends Node {
         sb.append("<VarDef>\n");
         return sb.toString();
     }
+
+    public InitValNode getInitValNode() {
+        return initValNode;
+    }
+
+    public ArrayList<ConstExpNode> getConstExpNodes() {
+        return constExpNodes;
+    }
 }

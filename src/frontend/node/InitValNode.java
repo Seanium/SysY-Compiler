@@ -47,4 +47,8 @@ public class InitValNode extends Node {
         sb.append("<InitVal>\n");
         return sb.toString();
     }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
 }

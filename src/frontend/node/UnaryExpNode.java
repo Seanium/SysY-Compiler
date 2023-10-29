@@ -4,6 +4,7 @@ import frontend.symbol.FuncSymbol;
 import frontend.symbol.Symbol;
 import frontend.symbol.SymbolTables;
 import frontend.token.Token;
+import frontend.token.TokenType;
 
 public class UnaryExpNode extends Node {
     private Token ident = null;
@@ -77,6 +78,30 @@ public class UnaryExpNode extends Node {
             }
         } else {    // UnaryExp → UnaryOp UnaryExp
             return unaryExpNode.calDim();
+        }
+    }
+
+    public UnaryOpNode getUnaryOpNode() {
+        return unaryOpNode;
+    }
+
+    public UnaryExpNode getUnaryExpNode() {
+        return unaryExpNode;
+    }
+
+    public int calVal() {
+        if (primaryExpNode != null) {   // UnaryExp → PrimaryExp
+            return primaryExpNode.calVal();
+        } else if (ident != null) { // UnaryExp → Ident '(' [FuncRParams] ')'
+            throw new RuntimeException("error: 初始化元素[函数返回值]不是编译时常量");
+        } else {    // UnaryExp → UnaryOp UnaryExp
+            if (unaryOpNode.getToken().getType() == TokenType.PLUS) {
+                return unaryExpNode.calVal();
+            } else if (unaryOpNode.getToken().getType() == TokenType.MINU) {
+                return -unaryExpNode.calVal();
+            } else {
+                return unaryExpNode.calVal() == 0 ? 1 : 0;
+            }
         }
     }
 }

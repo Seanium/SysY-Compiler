@@ -55,4 +55,8 @@ public class BlockNode extends Node {
         sb.append("<Block>\n");
         return sb.toString();
     }
+
+    public ArrayList<BlockItemNode> getBlockItemNodes() {
+        return blockItemNodes;
+    }
 }

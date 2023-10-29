@@ -1,6 +1,7 @@
 package frontend.node;
 
 import frontend.token.Token;
+import frontend.token.TokenType;
 
 public class AddExpNode extends Node {
     private final AddExpNode addExpNode;
@@ -49,6 +50,30 @@ public class AddExpNode extends Node {
                 return -1;
             } else {
                 return mulExpDim;
+            }
+        }
+    }
+
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
+
+    public Token getOp() {
+        return op;
+    }
+
+    /***
+     * 计算表达式的值。
+     * @return int 型的计算结果。
+     */
+    public int calVal() {
+        if (addExpNode == null) {   // AddExp → MulExp
+            return mulExpNode.calVal();
+        } else {    // AddExp → AddExp ('+' | '−') MulExp
+            if (op.getType() == TokenType.PLUS) {
+                return addExpNode.calVal() + mulExpNode.calVal();
+            } else {
+                return addExpNode.calVal() - mulExpNode.calVal();
             }
         }
     }

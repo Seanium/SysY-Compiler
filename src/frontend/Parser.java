@@ -912,7 +912,7 @@ public class Parser {
     }
 
     // 27.乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖
-    //【消除左递归】 AddExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
+    //【消除左递归】 MulExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
     private MulExpNode parseMulExp() {
         MulExpNode mulExpNode = new MulExpNode(parseUnaryExp());
         while (lexer.getType() == TokenType.MULT || lexer.getType() == TokenType.DIV || lexer.getType() == TokenType.MOD) {

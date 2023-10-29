@@ -27,4 +27,8 @@ public class MainFuncDefNode extends Node {
                 blockNode.toString() +
                 "<MainFuncDef>\n";
     }
+
+    public BlockNode getBlockNode() {
+        return blockNode;
+    }
 }

@@ -1,7 +1,8 @@
 import frontend.Lexer;
 import frontend.Parser;
-import frontend.error.ErrorList;
 import frontend.node.CompUnitNode;
+import midend.IRGenerator;
+import midend.ir.Module;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -27,25 +28,34 @@ public class Compiler {
     }
 
     public static void main(String[] args) {
+        // 词法分析
         String source = readFile("testfile.txt");
-//        System.out.println(source);
         Lexer lexer = Lexer.getInstance(source);
-
-        // 词法分析作业
+        //输出
 //        String tokens = lexer.TokensToString(lexer.tokenize());
 //        System.out.println(tokens);
 //        writeFile("output.txt", tokens);
 
-        // 语法分析作业
+        // 语法分析
         Parser parser = Parser.getInstance(lexer);
         CompUnitNode compUnitNode = parser.parseCompUnit();
+        // 输出
 //        String parseResult = compUnitNode.toString();
 //        System.out.println(parseResult);
 //        writeFile("output.txt", parseResult);
 
-        // 错误处理作业
-        String errorListStr = ErrorList.getInstance().toString();
-        System.out.println(errorListStr);
-        writeFile("error.txt", errorListStr);
+        // 错误处理
+        // 输出
+//        String errorListStr = ErrorList.getInstance().toString();
+//        System.out.println(errorListStr);
+//        writeFile("error.txt", errorListStr);
+
+        // 中间代码生成 (LLVM IR)
+        IRGenerator irGenerator = IRGenerator.getInstance();
+        irGenerator.visitCompUnitNode(compUnitNode);
+        // 输出
+        Module module = Module.getInstance();
+        System.out.println(module);
+        writeFile("llvm_ir.txt", module.toString());
     }
 }

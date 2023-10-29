@@ -123,6 +123,14 @@ public class StmtNode extends Node {
         return expNode;
     }
 
+    public LValNode getlValNode() {
+        return lValNode;
+    }
+
+    public BlockNode getBlockNode() {
+        return blockNode;
+    }
+
     // 17.语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
     //| [Exp] ';' //有无Exp两种情况
     //| Block
@@ -136,9 +144,9 @@ public class StmtNode extends Node {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if (blockNode != null) {
+        if (blockNode != null) {    // Block
             sb.append(blockNode);
-        } else if (ifToken != null) {
+        } else if (ifToken != null) {   // 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // 1.有else 2.无else
             sb.append(ifToken);
             sb.append(leftParen.toString());
             sb.append(condNode.toString());
@@ -148,7 +156,7 @@ public class StmtNode extends Node {
                 sb.append(elseToken);
                 sb.append(stmtNode2.toString());
             }
-        } else if (forToken != null) {
+        } else if (forToken != null) {  // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省 2. 缺省第一个 ForStmt 3. 缺省Cond 4. 缺省第二个ForStmt
             sb.append(forToken);
             sb.append(leftParen.toString());
             if (forStmtNode1 != null) {
@@ -164,19 +172,19 @@ public class StmtNode extends Node {
             }
             sb.append(rightParen.toString());
             sb.append(stmtNode.toString());
-        } else if (breakToken != null) {
+        } else if (breakToken != null) {    // 'break' ';'
             sb.append(breakToken);
             sb.append(semicn.toString());
-        } else if (continueToken != null) {
+        } else if (continueToken != null) { // 'continue' ';'
             sb.append(continueToken);
             sb.append(semicn.toString());
-        } else if (returnToken != null) {
+        } else if (returnToken != null) {   // 'return' [Exp] ';' // 1.有Exp 2.无Exp
             sb.append(returnToken);
             if (expNode != null) {
                 sb.append(expNode);
             }
             sb.append(semicn.toString());
-        } else if (printfToken != null) {
+        } else if (printfToken != null) {   // 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
             sb.append(printfToken);
             sb.append(leftParen.toString());
             sb.append(formatString.toString());
@@ -186,22 +194,22 @@ public class StmtNode extends Node {
             }
             sb.append(rightParen.toString());
             sb.append(semicn.toString());
-        } else if (lValNode != null && expNode != null) {
+        } else if (lValNode != null && expNode != null) {   // LVal '=' Exp ';' // 每种类型的语句都要覆盖
             sb.append(lValNode);
             sb.append(assign.toString());
             sb.append(expNode.toString());
             sb.append(semicn.toString());
-        } else if (lValNode != null && getintToken != null) {
+        } else if (lValNode != null && getintToken != null) {   // LVal '=' 'getint''('')'';'
             sb.append(lValNode);
             sb.append(assign.toString());
             sb.append(getintToken.toString());
             sb.append(leftParen.toString());
             sb.append(rightParen.toString());
             sb.append(semicn.toString());
-        } else if (expNode != null) {
+        } else if (expNode != null) {   // [Exp] ';' //有无Exp两种情况
             sb.append(expNode);
             sb.append(semicn.toString());
-        } else if (semicn != null) {
+        } else if (semicn != null) {    // ';' //有无Exp两种情况
             sb.append(semicn);
         }
         sb.append("<Stmt>\n");

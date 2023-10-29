@@ -16,10 +16,9 @@ public class ForStmtNode extends Node {
     // 18.语句 ForStmt → LVal '=' Exp // 存在即可
     @Override
     public String toString() {
-        String sb = lValNode.toString() +
+        return lValNode.toString() +
                 assign.toString() +
                 expNode.toString() +
                 "<ForStmt>\n";
-        return sb;
     }
 }

@@ -32,4 +32,8 @@ public class VarDeclNode extends Node {
         sb.append("<VarDecl>\n");
         return sb.toString();
     }
+
+    public ArrayList<VarDefNode> getVarDefNodes() {
+        return varDefNodes;
+    }
 }

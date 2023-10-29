@@ -1,6 +1,9 @@
 package frontend.node;
 
 import frontend.token.Token;
+import midend.ir.Constant;
+import midend.ir.Value;
+import midend.ir.symbol.IRSymbolManager;
 
 public class PrimaryExpNode extends Node {
 
@@ -61,8 +64,34 @@ public class PrimaryExpNode extends Node {
             return expNode.calDim();
         } else if (lValNode != null) {  // PrimaryExp → LVal
             return lValNode.calDim();
-        } else {
-            return 0;   // PrimaryExp → Number
+        } else {    // PrimaryExp → Number
+            return 0;
+        }
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
+    public NumberNode getNumberNode() {
+        return numberNode;
+    }
+
+    public int calVal() {
+        if (expNode != null) {  // PrimaryExp → '(' Exp ')'
+            return expNode.getAddExpNode().calVal();
+        } else if (lValNode != null) {  // PrimaryExp → LVal
+            if (!lValNode.getExpNodes().isEmpty()) {
+                throw new RuntimeException("error: 初始化元素[数组元素]不是编译时常量");
+            }
+            Value initValue = IRSymbolManager.getInstance().findSymbol(lValNode.getIdent().getValue()).getInitValue();
+            if (initValue == null) {    // 如果没有初值
+                throw new RuntimeException("error: 初始化元素不是编译时常量");
+            } else {    // 如果有初值
+                return ((Constant) initValue).getValue();
+            }
+        } else {    // PrimaryExp → Number
+            return Integer.parseInt(numberNode.getIntConst().getValue());
         }
     }
 }

@@ -27,4 +27,16 @@ public class CompUnitNode extends Node {
         sb.append("<CompUnit>\n");
         return sb.toString();
     }
+
+    public ArrayList<DeclNode> getDeclNodes() {
+        return declNodes;
+    }
+
+    public ArrayList<FuncDefNode> getFuncDefNodes() {
+        return funcDefNodes;
+    }
+
+    public MainFuncDefNode getMainFuncDefNode() {
+        return mainFuncDefNode;
+    }
 }

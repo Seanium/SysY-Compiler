@@ -50,4 +50,8 @@ public class LValNode extends Node {
             return -1;  // 找不到变量声明，返回-1
         }
     }
+
+    public ArrayList<ExpNode> getExpNodes() {
+        return expNodes;
+    }
 }

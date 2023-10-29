@@ -14,4 +14,8 @@ public class UnaryOpNode extends Node {
     public String toString() {
         return token.toString() + "<UnaryOp>\n";
     }
+
+    public Token getToken() {
+        return token;
+    }
 }

@@ -26,4 +26,8 @@ public class BlockItemNode extends Node {
             return stmtNode.toString();
         }
     }
+
+    public DeclNode getDeclNode() {
+        return declNode;
+    }
 }

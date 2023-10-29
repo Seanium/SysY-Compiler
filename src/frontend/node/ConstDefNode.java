@@ -46,4 +46,12 @@ public class ConstDefNode extends Node {
         sb.append("<ConstDef>\n");
         return sb.toString();
     }
+
+    public ArrayList<ConstExpNode> getConstExpNodes() {
+        return constExpNodes;
+    }
+
+    public ConstInitValNode getConstInitValNode() {
+        return constInitValNode;
+    }
 }

@@ -12,4 +12,8 @@ public class ConstExpNode extends Node {
     public String toString() {
         return addExpNode.toString() + "<ConstExp>\n";
     }
+
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
 }

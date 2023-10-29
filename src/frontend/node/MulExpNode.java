@@ -1,6 +1,7 @@
 package frontend.node;
 
 import frontend.token.Token;
+import frontend.token.TokenType;
 
 public class MulExpNode extends Node {
 
@@ -43,5 +44,27 @@ public class MulExpNode extends Node {
 
     public int calDim() {
         return unaryExpNode.calDim();
+    }
+
+    public MulExpNode getMulExpNode() {
+        return mulExpNode;
+    }
+
+    public Token getOp() {
+        return op;
+    }
+
+    public int calVal() {
+        if (mulExpNode == null) {   // MulExp → UnaryExp
+            return unaryExpNode.calVal();
+        } else {    // MulExp → MulExp ('*' | '/' | '%') UnaryExp
+            if (op.getType() == TokenType.MULT) {
+                return mulExpNode.calVal() * unaryExpNode.calVal();
+            } else if (op.getType() == TokenType.DIV) {
+                return mulExpNode.calVal() / unaryExpNode.calVal();
+            } else {
+                return mulExpNode.calVal() % unaryExpNode.calVal();
+            }
+        }
     }
 }

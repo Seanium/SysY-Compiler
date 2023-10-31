@@ -3,6 +3,7 @@ package midend.ir.type;
 public class IntegerType extends Type {
     private final int bitWidth;
     public static final IntegerType i32 = new IntegerType(32);
+    public static final IntegerType i8 = new IntegerType(8);
 
     private IntegerType(int bitWidth) {
         this.bitWidth = bitWidth;
@@ -10,10 +11,6 @@ public class IntegerType extends Type {
 
     @Override
     public String toString() {
-        if (bitWidth == 32) {
-            return "i32";
-        } else {
-            return null;
-        }
+        return "i" + bitWidth;
     }
 }

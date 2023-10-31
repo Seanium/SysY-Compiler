@@ -21,7 +21,7 @@ public class ReturnInst extends Inst {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (value == null) {    // ret void             value == null
-            sb.append("ret void\n");
+            sb.append("ret void");
         } else {                // ret <type> <value>   value != null
             sb.append("ret i32 ").append(value.getName());
         }

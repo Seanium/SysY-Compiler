@@ -104,4 +104,16 @@ public class UnaryExpNode extends Node {
             }
         }
     }
+
+    /***
+     *
+     * @return 若无实参，则为null。
+     */
+    public FuncRParamsNode getFuncRParams() {
+        return funcRParams;
+    }
+
+    public Token getIdent() {
+        return ident;
+    }
 }

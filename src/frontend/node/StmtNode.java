@@ -86,7 +86,7 @@ public class StmtNode extends Node {
         this.leftParen = leftParen;
         this.formatString = formatString;
         this.commas = commas;
-        this.expNodes = expNodes;
+        this.expNodes = expNodes;   // 若无参数，则数组为空
         this.rightParen = rightParen;
         this.semicn = semicn;
     }
@@ -129,6 +129,42 @@ public class StmtNode extends Node {
 
     public BlockNode getBlockNode() {
         return blockNode;
+    }
+
+    public Token getIfToken() {
+        return ifToken;
+    }
+
+    public Token getForToken() {
+        return forToken;
+    }
+
+    public Token getBreakToken() {
+        return breakToken;
+    }
+
+    public Token getContinueToken() {
+        return continueToken;
+    }
+
+    public Token getPrintfToken() {
+        return printfToken;
+    }
+
+    public Token getGetintToken() {
+        return getintToken;
+    }
+
+    public Token getSemicn() {
+        return semicn;
+    }
+
+    public ArrayList<ExpNode> getExpNodes() {
+        return expNodes;
+    }
+
+    public Token getFormatString() {
+        return formatString;
     }
 
     // 17.语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖
@@ -206,10 +242,10 @@ public class StmtNode extends Node {
             sb.append(leftParen.toString());
             sb.append(rightParen.toString());
             sb.append(semicn.toString());
-        } else if (expNode != null) {   // [Exp] ';' //有无Exp两种情况
+        } else if (expNode != null) {   // Exp ';'  //即 [Exp] ';'有 Exp 的情况
             sb.append(expNode);
             sb.append(semicn.toString());
-        } else if (semicn != null) {    // ';' //有无Exp两种情况
+        } else if (semicn != null) {    // ';'      //即 [Exp] ';'无 Exp 的情况
             sb.append(semicn);
         }
         sb.append("<Stmt>\n");

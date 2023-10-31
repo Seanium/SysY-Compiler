@@ -35,4 +35,8 @@ public class FuncRParamsNode extends Node {
         sb.append("<FuncRParams>\n");
         return sb.toString();
     }
+
+    public ArrayList<ExpNode> getExpNodes() {
+        return expNodes;
+    }
 }

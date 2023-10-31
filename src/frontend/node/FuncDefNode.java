@@ -1,6 +1,9 @@
 package frontend.node;
 
 import frontend.token.Token;
+import midend.ir.Param;
+
+import java.util.ArrayList;
 
 public class FuncDefNode extends Node {
     private final FuncTypeNode funcTypeNode;
@@ -10,6 +13,15 @@ public class FuncDefNode extends Node {
     private final Token rightParen;
     private final BlockNode blockNode;
 
+    /***
+     *
+     * @param funcTypeNode
+     * @param ident
+     * @param leftParen
+     * @param funcFParamsNode   无形参时为null。
+     * @param rightParen
+     * @param blockNode
+     */
     public FuncDefNode(FuncTypeNode funcTypeNode, Token ident, Token leftParen, FuncFParamsNode funcFParamsNode, Token rightParen, BlockNode blockNode) {
         this.funcTypeNode = funcTypeNode;
         this.ident = ident;
@@ -34,5 +46,31 @@ public class FuncDefNode extends Node {
         sb.append(blockNode.toString());
         sb.append("<FuncDef>\n");
         return sb.toString();
+    }
+
+    public FuncTypeNode getFuncTypeNode() {
+        return funcTypeNode;
+    }
+
+    public Token getIdent() {
+        return ident;
+    }
+
+    public FuncFParamsNode getFuncFParamsNode() {
+        return funcFParamsNode;
+    }
+
+    public BlockNode getBlockNode() {
+        return blockNode;
+    }
+
+    public ArrayList<Param> getIRParams() {
+        ArrayList<Param> params = new ArrayList<>();
+        if (funcFParamsNode != null) {
+            for (FuncFParamNode funcFParamNode : funcFParamsNode.getFuncFParamNodes()) {
+                params.add(funcFParamNode.toIRParam());
+            }
+        }
+        return params;
     }
 }

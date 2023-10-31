@@ -8,6 +8,9 @@ import midend.ir.inst.*;
 import midend.ir.symbol.IRSymbol;
 import midend.ir.symbol.IRSymbolManager;
 import midend.ir.type.IntegerType;
+import midend.ir.type.PointerType;
+import midend.ir.type.Type;
+import midend.ir.type.VoidType;
 
 import java.util.ArrayList;
 
@@ -33,10 +36,48 @@ public class IRGenerator {
     public void visitCompUnitNode(CompUnitNode compUnitNode) {
         irSymbolManager.enterBlock();       // 进入块级作用域
         irSymbolManager.setGlobal(true);    // 全局变量声明开始
-        // 创建库函数getint()
-        Function getintFunc = new Function("getint", IntegerType.i32, new ArrayList<>());
+
+        // 创建库函数声明 i32 @getint()
+        Function getintFunc = new Function("getint", IntegerType.i32);
+        getintFunc.setIsLib();
         // 添加函数到符号表
         irSymbolManager.addSymbol("getint", new IRSymbol(getintFunc, null));
+        // 添加函数到module
+        irBuilder.addFunctionToModule(getintFunc);
+
+        // 创建库函数声明 void @putint(i32)
+        ArrayList<Param> putintParams = new ArrayList<>();
+        putintParams.add(new Param(IntegerType.i32, ""));
+        Function putintFunc = new Function("putint", VoidType.voidType);
+        putintFunc.setParams(putintParams);
+        putintFunc.setIsLib();
+        // 添加函数到符号表
+        irSymbolManager.addSymbol("putint", new IRSymbol(putintFunc, null));
+        // 添加函数到module
+        irBuilder.addFunctionToModule(putintFunc);
+
+        // 创建库函数声明 void @putch(i32)
+        ArrayList<Param> putchParams = new ArrayList<>();
+        putchParams.add(new Param(IntegerType.i32, ""));
+        Function putchFunc = new Function("putch", VoidType.voidType);
+        putchFunc.setParams(putchParams);
+        putchFunc.setIsLib();
+        // 添加函数到符号表
+        irSymbolManager.addSymbol("putch", new IRSymbol(putchFunc, null));
+        // 添加函数到module
+        irBuilder.addFunctionToModule(putchFunc);
+
+        // 创建库函数声明 void @putstr(i8*)
+        ArrayList<Param> putstrParams = new ArrayList<>();
+        putstrParams.add(new Param(new PointerType(IntegerType.i8), ""));
+        Function putstrFunc = new Function("putstr", VoidType.voidType);
+        putstrFunc.setParams(putstrParams);
+        putstrFunc.setIsLib();
+        // 添加函数到符号表
+        irSymbolManager.addSymbol("putstr", new IRSymbol(putstrFunc, null));
+        // 添加函数到module
+        irBuilder.addFunctionToModule(putstrFunc);
+
         for (DeclNode declNode : compUnitNode.getDeclNodes()) {
             visitDeclNode(declNode);
         }
@@ -85,13 +126,13 @@ public class IRGenerator {
             if (constDefNode.getConstExpNodes().isEmpty()) {    // 如果不是数组
                 // 创建alloca指令
                 AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
-                // 添加指令到模块
+                // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(allocaInst);
                 // 创建store指令
                 int val = constDefNode.getConstInitValNode().getConstExpNode().getAddExpNode().calVal();   // 计算等号右侧初值
                 Constant initValue = new Constant(IntegerType.i32, val);
                 StoreInst storeInst = new StoreInst(initValue, allocaInst);
-                // 添加指令到模块
+                // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(storeInst);
                 // 添加局部常量到符号表
                 irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, initValue));
@@ -136,20 +177,20 @@ public class IRGenerator {
                 if (varDefNode.getInitValNode() == null) {  // 如果没有初值 只创建alloca指令, 不创建store指令
                     // 创建alloca指令
                     AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
-                    // 添加指令到模块
+                    // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(allocaInst);
                     // 添加局部变量到符号表(未初始化的局部变量，存储alloca指令)
                     irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
                 } else {    // 如果有初值
                     // 创建alloca指令
                     AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
-                    // 添加指令到模块
+                    // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(allocaInst);
                     // 解析初值
                     Value initValue = visitInitValNode(varDefNode.getInitValNode());
                     // 创建store指令
                     StoreInst storeInst = new StoreInst(initValue, allocaInst);
-                    // 添加指令到模块
+                    // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(storeInst);
                     // 添加局部变量到符号表
                     irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, initValue));
@@ -173,14 +214,40 @@ public class IRGenerator {
     // 10.函数定义 FuncDef → FuncType Ident '(' [FuncFParams] ')' Block // 1.无形参 2.有形参
     // FIRST(FuncFParams ) = FIRST(FuncFParam) = {‘int’}
     private void visitFuncDefNode(FuncDefNode funcDefNode) {
-        irSymbolManager.enterFunction();    // 进入函数作用域
-        //TODO
+        // 创建函数
+        String ident = funcDefNode.getIdent().getValue();
+        Type type = funcDefNode.getFuncTypeNode().isVoid() ? VoidType.voidType : IntegerType.i32;
+        Function func = new Function(ident, type);
+        // 添加函数到符号表
+        irSymbolManager.addSymbol(ident, new IRSymbol(func, null));
+        // 添加函数到module
+        irBuilder.addFunctionToModule(func);
+        // 设置curFunc
+        irBuilder.setCurFunction(func);
+        // 进入函数作用域
+        irSymbolManager.enterFunction();
+
+        // 向函数IR补充形参信息(形参位于函数内层作用域)
+        func.setParams(funcDefNode.getIRParams());
+
+        // 创建基本块
+        BasicBlock basicBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), func);
+        // 添加基本块到函数
+        irBuilder.addBasicBlockToCurFunction(basicBlock);
+        // 设置curBasicBlock
+        irBuilder.setCurBasicBlock(basicBlock);
+
+        // 解析形参
+        visitFuncFParamsNode(funcDefNode.getFuncFParamsNode());
+
+        // 解析函数体
+        visitBlockNode(funcDefNode.getBlockNode());
     }
 
     // 11.主函数定义 MainFuncDef → 'int' 'main' '(' ')' Block // 存在main函数
     private void visitMainFuncDefNode(MainFuncDefNode mainFuncDefNode) {
         // 创建函数
-        Function mainFunc = new Function("main", IntegerType.i32, new ArrayList<>());
+        Function mainFunc = new Function("main", IntegerType.i32);
         // 添加函数到符号表
         irSymbolManager.addSymbol("main", new IRSymbol(mainFunc, null));
         // 添加函数到module
@@ -197,6 +264,39 @@ public class IRGenerator {
 
         // 解析函数体
         visitBlockNode(mainFuncDefNode.getBlockNode());
+    }
+
+    // 13.函数形参表 FuncFParams → FuncFParam { ',' FuncFParam } // 1.花括号内重复0次 2.花括号内重复多次
+    private void visitFuncFParamsNode(FuncFParamsNode funcFParamsNode) {
+        if (funcFParamsNode == null) {  // 如果无形参
+            return;
+        }
+        // 如果有形参
+        for (FuncFParamNode funcFParamNode : funcFParamsNode.getFuncFParamNodes()) {
+            visitFuncFParamNode(funcFParamNode);
+        }
+    }
+
+    // 14.函数形参 FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }] // 1.普通变量2.一维数组变量 3.二维数组变量
+    private void visitFuncFParamNode(FuncFParamNode funcFParamNode) {
+        String ident = funcFParamNode.getIdent().getValue();
+
+        // todo 考虑数组 计算形参实际的维度
+
+        // 如果是0维
+        // 创建alloca指令
+        AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
+        // 添加指令到当前基本块
+        irBuilder.addInstToCurBasicBlock(allocaInst);
+        // 创建store指令
+        StoreInst storeInst = new StoreInst(funcFParamNode.toIRParam(), allocaInst);
+        // 添加指令到当前基本块
+        irBuilder.addInstToCurBasicBlock(storeInst);
+        // 添加局部变量（此处为形参）到符号表
+        irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
+
+        // 如果是>0维
+        // todo
     }
 
     // 15.语句块 Block → '{' { BlockItem } '}' // 1.花括号内重复0次 2.花括号内重复多次
@@ -228,7 +328,17 @@ public class IRGenerator {
     //| LVal '=' 'getint''('')'';'
     //| 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
     private void visitStmtNode(StmtNode stmtNode) {
-        if (stmtNode.getReturnToken() != null) {    // 'return' [Exp] ';' // 1.有Exp 2.无Exp
+        if (stmtNode.getBlockNode() != null) {  // Block
+            // todo
+        } else if (stmtNode.getIfToken() != null) { // 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // 1.有else 2.无else
+            // todo
+        } else if (stmtNode.getForToken() != null) {    // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省 2. 缺省第一个 ForStmt 3. 缺省Cond 4. 缺省第二个ForStmt
+            // todo
+        } else if (stmtNode.getBreakToken() != null) {  // 'break' ';'
+            // todo
+        } else if (stmtNode.getContinueToken() != null) {   // 'continue' ';'
+            // todo
+        } else if (stmtNode.getReturnToken() != null) {    // 'return' [Exp] ';' // 1.有Exp 2.无Exp
             if (stmtNode.getExpNode() == null) {    // 'return';
                 if (irBuilder.getCurFunction().getType() == IntegerType.i32) {  // 若函数类型为int, 则 return; 转换为 ret i32 0
                     // 创建指令
@@ -247,22 +357,68 @@ public class IRGenerator {
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(returnInst);
             }
-        } else if (stmtNode.getlValNode() != null && stmtNode.getExpNode() != null) {   //    // LVal '=' Exp ';' // 每种类型的语句都要覆盖
-            if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组
+        } else if (stmtNode.getPrintfToken() != null) { // 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
+            // todo 待修改为数组形式 putstr
+            String formatString = stmtNode.getFormatString().getValue();
+            formatString = formatString.replace("\\n", "\n");
+            int formatExpIndex = 0;   // 当前是第几个格式占位符
+            for (int i = 1; i < formatString.length() - 1; i++) {
+                if (formatString.charAt(i) == '%') {
+                    // 创建call指令
+                    Function putintFunc = (Function) irSymbolManager.findSymbol("putint").getSymbol();
+                    Value arg = visitExpNode(stmtNode.getExpNodes().get(formatExpIndex));
+                    ArrayList<Value> args = new ArrayList<>();
+                    args.add(arg);
+                    CallInst callInst = new CallInst(null, putintFunc, args);
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(callInst);
+                    // 移动下标
+                    i++;    // 跳过"%d"
+                    formatExpIndex++;
+                } else {
+                    // 创建call指令
+                    Function putchFunc = (Function) irSymbolManager.findSymbol("putch").getSymbol();
+                    Value arg = new Value(IntegerType.i32, String.valueOf(Integer.valueOf(formatString.charAt(i))));    //char -> int(ascii) -> string
+                    ArrayList<Value> args = new ArrayList<>();
+                    args.add(arg);
+                    CallInst callInst = new CallInst(null, putchFunc, args);
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(callInst);
+                }
+            }
+        } else if (stmtNode.getlValNode() != null && stmtNode.getExpNode() != null) {   // LVal '=' Exp ';' // 每种类型的语句都要覆盖
+            if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组元素
                 // 解析表达式
                 Value expValue = visitExpNode(stmtNode.getExpNode());
                 // 创建store指令
                 String ident = stmtNode.getlValNode().getIdent().getValue();
                 StoreInst storeInst = new StoreInst(expValue, irSymbolManager.findSymbol(ident).getSymbol());
-                // 添加指令到模块
+                // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(storeInst);
-            } else {    // 如果左边是数组
+            } else {    // 如果左边是数组元素
                 // todo
             }
-        } else if (stmtNode.getBlockNode() != null) {  // Block
-            visitBlockNode(stmtNode.getBlockNode());
+        } else if (stmtNode.getlValNode() != null && stmtNode.getGetintToken() != null) {   // LVal '=' 'getint''('')'';'
+            // todo
+            if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组元素
+                // 创建call指令
+                Function getintFunc = (Function) irSymbolManager.findSymbol("getint").getSymbol();
+                CallInst callInst = new CallInst(irBuilder.genLocalVarName(), getintFunc, new ArrayList<>());
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(callInst);
+                // 创建store指令
+                String ident = stmtNode.getlValNode().getIdent().getValue();
+                StoreInst storeInst = new StoreInst(callInst, irSymbolManager.findSymbol(ident).getSymbol());
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(storeInst);
+            } else {    // 如果左边是数组元素
+                // todo
+            }
+        } else if (stmtNode.getExpNode() != null) { // Exp ';'  //即 [Exp] ';'有 Exp 的情况
+            visitExpNode(stmtNode.getExpNode());
+        } else if (stmtNode.getSemicn() != null) {  // ';'      //即 [Exp] ';'无 Exp 的情况
+            // 什么都不做
         }
-        //TODO
     }
 
     // 19.表达式 Exp → AddExp 注：SysY 表达式是int 型表达式 // 存在即可
@@ -326,9 +482,27 @@ public class IRGenerator {
                 return null;    // todo
             }
         } else {    // UnaryExp → Ident '(' [FuncRParams] ')'
-            //TODO
-            return null; //待修改
+            String ident = unaryExpNode.getIdent().getValue();
+            ArrayList<Value> args = visitFuncRParams(unaryExpNode.getFuncRParams());
+            // 创建call指令
+            Function targetFunc = (Function) irSymbolManager.findSymbol(ident).getSymbol();
+            String callInstName = targetFunc.getType() == VoidType.voidType ? null : irBuilder.genLocalVarName();
+            CallInst callInst = new CallInst(callInstName, targetFunc, args);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(callInst);
+            return callInst;
         }
+    }
+
+    // 26.函数实参表 FuncRParams → Exp { ',' Exp } // 1.花括号内重复0次 2.花括号内重复多次 3.Exp需要覆盖数组传参和部分数组传参
+    ArrayList<Value> visitFuncRParams(FuncRParamsNode funcRParamsNode) {
+        ArrayList<Value> args = new ArrayList<>();
+        if (funcRParamsNode != null) {  // 若有实参，才遍历子结点
+            for (ExpNode expNode : funcRParamsNode.getExpNodes()) {
+                args.add(visitExpNode(expNode));
+            }
+        }
+        return args;
     }
 
     // 27.乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖

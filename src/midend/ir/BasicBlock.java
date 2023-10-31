@@ -10,7 +10,7 @@ public class BasicBlock extends Value {
     private final ArrayList<Inst> instructions;
 
     public BasicBlock(String name, Function parentFunction) {
-        super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
+        super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label todo 基本块的右值类型是什么？
         this.parentFunction = parentFunction;
         this.instructions = new ArrayList<>();
     }

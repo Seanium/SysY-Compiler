@@ -13,6 +13,14 @@ public class ForStmtNode extends Node {
         this.expNode = expNode;
     }
 
+    public LValNode getlValNode() {
+        return lValNode;
+    }
+
+    public ExpNode getExpNode() {
+        return expNode;
+    }
+
     // 18.语句 ForStmt → LVal '=' Exp // 存在即可
     @Override
     public String toString() {

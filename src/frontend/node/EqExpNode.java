@@ -34,4 +34,16 @@ public class EqExpNode extends Node {
         sb.append("<EqExp>\n");
         return sb.toString();
     }
+
+    public EqExpNode getEqExpNode() {
+        return eqExpNode;
+    }
+
+    public Token getOp() {
+        return op;
+    }
+
+    public RelExpNode getRelExpNode() {
+        return relExpNode;
+    }
 }

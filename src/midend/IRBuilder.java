@@ -27,10 +27,13 @@ public class IRBuilder {
     private final HashMap<Function, Integer> regIndexMap;
     private Function curFunction;
     private BasicBlock curBasicBlock;
+    private BasicBlock curTrueBlock;    // 条件真目标基本块 用于if语句
+    private BasicBlock curFalseBlock;   // 条件假目标基本块 用于if语句
+    private BasicBlock continueTargetBlock; // continue语句的跳转目标基本块
+    private BasicBlock breakTargetBlock;    // break语句的跳转目标基本块
 
     /***
      * 添加全局变量到模块
-     * @param globalVar
      */
     public void addGlobalVar(GlobalVar globalVar) {
         module.addGlobalVar(globalVar);
@@ -38,7 +41,6 @@ public class IRBuilder {
 
     /***
      * 添加函数到模块
-     * @param function
      */
     public void addFunctionToModule(Function function) {
         module.addFunction(function);
@@ -46,7 +48,6 @@ public class IRBuilder {
 
     /***
      * 添加基本块到当前函数
-     * @param basicBlock
      */
     public void addBasicBlockToCurFunction(BasicBlock basicBlock) {
         getCurFunction().addBasicBlock(basicBlock);
@@ -54,7 +55,6 @@ public class IRBuilder {
 
     /***
      * 添加指令到基本块
-     * @param inst
      */
     public void addInstToCurBasicBlock(Inst inst) {
         getCurBasicBlock().addInst(inst);
@@ -92,13 +92,69 @@ public class IRBuilder {
      * 生成当前函数的基本块标签名
      */
     public String genBasicBlockLabel() {
-        return String.valueOf(genRegIndex(getCurFunction()));
+        return "v" + genRegIndex(getCurFunction());
     }
 
     /***
      * 生成当前函数的局部变量名
      */
     public String genLocalVarName() {
-        return "%" + genRegIndex(getCurFunction());
+        return "%v" + genRegIndex(getCurFunction());
+    }
+
+    /***
+     * 获取当前条件真目标基本块。
+     */
+    public BasicBlock getCurTrueBlock() {
+        return curTrueBlock;
+    }
+
+    /***
+     * 设置当前条件真目标基本块。
+     */
+    public void setCurTrueBlock(BasicBlock curTrueBlock) {
+        this.curTrueBlock = curTrueBlock;
+    }
+
+    /***
+     * 获取当前条件假目标基本块。
+     */
+    public BasicBlock getCurFalseBlock() {
+        return curFalseBlock;
+    }
+
+    /***
+     * 设置当前条件假目标基本块。
+     */
+    public void setCurFalseBlock(BasicBlock curFalseBlock) {
+        this.curFalseBlock = curFalseBlock;
+    }
+
+    /***
+     * 获取continue语句的跳转目标基本块。
+     */
+    public BasicBlock getContinueTargetBlock() {
+        return continueTargetBlock;
+    }
+
+    /***
+     * 设置continue语句的跳转目标基本块。
+     */
+    public void setContinueTargetBlock(BasicBlock continueTargetBlock) {
+        this.continueTargetBlock = continueTargetBlock;
+    }
+
+    /***
+     * 获取break语句的跳转目标基本块。
+     */
+    public BasicBlock getBreakTargetBlock() {
+        return breakTargetBlock;
+    }
+
+    /***
+     * 设置break语句的跳转目标基本块。
+     */
+    public void setBreakTargetBlock(BasicBlock breakTargetBlock) {
+        this.breakTargetBlock = breakTargetBlock;
     }
 }

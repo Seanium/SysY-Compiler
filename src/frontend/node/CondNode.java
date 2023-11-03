@@ -7,6 +7,10 @@ public class CondNode extends Node {
         this.lOrExpNode = lOrExpNode;
     }
 
+    public LOrExpNode getlOrExpNode() {
+        return lOrExpNode;
+    }
+
     // 20.条件表达式 Cond → LOrExp // 存在即可
     @Override
     public String toString() {

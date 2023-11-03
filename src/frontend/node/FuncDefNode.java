@@ -15,12 +15,7 @@ public class FuncDefNode extends Node {
 
     /***
      *
-     * @param funcTypeNode
-     * @param ident
-     * @param leftParen
      * @param funcFParamsNode   无形参时为null。
-     * @param rightParen
-     * @param blockNode
      */
     public FuncDefNode(FuncTypeNode funcTypeNode, Token ident, Token leftParen, FuncFParamsNode funcFParamsNode, Token rightParen, BlockNode blockNode) {
         this.funcTypeNode = funcTypeNode;

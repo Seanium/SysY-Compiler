@@ -35,4 +35,16 @@ public class RelExpNode extends Node {
         sb.append("<RelExp>\n");
         return sb.toString();
     }
+
+    public RelExpNode getRelExpNode() {
+        return relExpNode;
+    }
+
+    public Token getOp() {
+        return op;
+    }
+
+    public AddExpNode getAddExpNode() {
+        return addExpNode;
+    }
 }

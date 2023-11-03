@@ -106,6 +106,8 @@ public class IRGenerator {
         }
     }
 
+    // 4.基本类型 BType → 'int' // 存在即可
+
     // 5.常数定义 ConstDef → Ident { '[' ConstExp ']' } '=' ConstInitVal // 包含普通变量、一维数组、二维数组共三种情况
     private void visitConstDefNode(ConstDefNode constDefNode) {
         String ident = constDefNode.getIdent().getValue();
@@ -142,6 +144,8 @@ public class IRGenerator {
         }
     }
 
+    // 6.常量初值 ConstInitVal → ConstExp
+    // | '{' [ ConstInitVal { ',' ConstInitVal } ] '}' // 1.常表达式初值 2.一维数组初值 3.二维数组初值
 
     // 7.变量声明 VarDecl → BType VarDef { ',' VarDef } ';' // 1.花括号内重复0次 2.花括号内重复多次
     private void visitVarDeclNode(VarDeclNode varDeclNode) {
@@ -232,7 +236,7 @@ public class IRGenerator {
 
         // 创建基本块
         BasicBlock basicBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), func);
-        // 添加基本块到函数
+        // 添加基本块到当前函数
         irBuilder.addBasicBlockToCurFunction(basicBlock);
         // 设置curBasicBlock
         irBuilder.setCurBasicBlock(basicBlock);
@@ -255,9 +259,9 @@ public class IRGenerator {
         // 设置curFunc
         irBuilder.setCurFunction(mainFunc);
 
-        // 创建基本块    // todo 是否应该在visitBlockNode中处理基本块相关部分
+        // 创建基本块
         BasicBlock basicBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), mainFunc);
-        // 添加基本块到函数
+        // 添加基本块到当前函数
         irBuilder.addBasicBlockToCurFunction(basicBlock);
         //设置curBasicBlock
         irBuilder.setCurBasicBlock(basicBlock);
@@ -265,6 +269,8 @@ public class IRGenerator {
         // 解析函数体
         visitBlockNode(mainFuncDefNode.getBlockNode());
     }
+
+    // 12.函数类型 FuncType → 'void' | 'int' // 覆盖两种类型的函数
 
     // 13.函数形参表 FuncFParams → FuncFParam { ',' FuncFParam } // 1.花括号内重复0次 2.花括号内重复多次
     private void visitFuncFParamsNode(FuncFParamsNode funcFParamsNode) {
@@ -329,15 +335,163 @@ public class IRGenerator {
     //| 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
     private void visitStmtNode(StmtNode stmtNode) {
         if (stmtNode.getBlockNode() != null) {  // Block
-            // todo
+            visitBlockNode(stmtNode.getBlockNode());
         } else if (stmtNode.getIfToken() != null) { // 'if' '(' Cond ')' Stmt [ 'else' Stmt ] // 1.有else 2.无else
-            // todo
+            if (stmtNode.getElseToken() != null) {  // 如果有else
+                // if cond(cond属于[preBlock]) [thenBlock] else [elseBlock] [followBlock]
+
+                // 创建thenBlock
+                BasicBlock thenBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+                // 创建elseBlock
+                BasicBlock elseBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+
+                // 设置当前条件真目标基本块为thenBlock
+                irBuilder.setCurTrueBlock(thenBlock);
+                // 设置当前条件假目标基本块为elseBlock
+                irBuilder.setCurFalseBlock(elseBlock);
+                // 解析条件(满足短路求值)
+                visitCondNode(stmtNode.getCondNode());
+
+                // 创建followBlock(创建时机 决定编号顺序 希望followBlock的编号 大于 短路条件块的编号)
+                BasicBlock followBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+
+                // 添加thenBlock到当前函数(添加时机 决定输出顺序)
+                irBuilder.addBasicBlockToCurFunction(thenBlock);
+                // 解析thenBlock
+                irBuilder.setCurBasicBlock(thenBlock);
+                visitStmtNode(stmtNode.getStmtNode1());
+                //最后无条件跳转到followBlock
+                JumpInst jumpInst1 = new JumpInst(followBlock);
+                // 添加指令到当前基本块(curBlock在上面解析thenBlock时更新, 此时可以正确嵌套)
+                irBuilder.addInstToCurBasicBlock(jumpInst1);
+
+                // 添加elseBlock到当前函数(添加时机 决定输出顺序)
+                irBuilder.addBasicBlockToCurFunction(elseBlock);
+                // 解析elseBlock
+                irBuilder.setCurBasicBlock(elseBlock);
+                visitStmtNode(stmtNode.getStmtNode2());
+                //最后无条件跳转到followBlock
+                JumpInst jumpInst2 = new JumpInst(followBlock);
+                // 添加指令到当前基本块(curBlock在上面解析elseBlock时更新, 此时可以正确嵌套)
+                irBuilder.addInstToCurBasicBlock(jumpInst2);
+
+                // 添加followBlock到当前函数(添加时机 决定输出顺序)
+                irBuilder.addBasicBlockToCurFunction(followBlock);
+                // 设置curBasicBlock为followBlock
+                irBuilder.setCurBasicBlock(followBlock);
+            } else {    // 如果没有else
+                // if cond(cond属于[preBlock]) [thenBlock] [followBlock]
+
+                // 创建thenBlock
+                BasicBlock thenBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+                // 创建followBlock
+                BasicBlock followBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+
+                // 设置当前条件真目标基本块为thenBlock
+                irBuilder.setCurTrueBlock(thenBlock);
+                // 设置当前条件假目标基本块为followBlock
+                irBuilder.setCurFalseBlock(followBlock);
+                // 解析条件(满足短路求值)
+                visitCondNode(stmtNode.getCondNode());
+
+                // 添加thenBlock到当前函数(添加时机 决定输出顺序)
+                irBuilder.addBasicBlockToCurFunction(thenBlock);
+                // 解析thenBlock
+                irBuilder.setCurBasicBlock(thenBlock);
+                visitStmtNode(stmtNode.getStmtNode1());
+                // 最后无条件跳转到followBlock
+                JumpInst jumpInst1 = new JumpInst(followBlock);
+                // 添加指令到当前基本块(curBlock在上面解析thenBlock时更新, 此时可以正确嵌套)
+                irBuilder.addInstToCurBasicBlock(jumpInst1);
+
+                // 添加followBlock到当前函数(添加时机 决定输出顺序)
+                irBuilder.addBasicBlockToCurFunction(followBlock);
+                // 设置curBasicBlock为followBlock
+                irBuilder.setCurBasicBlock(followBlock);
+            }
         } else if (stmtNode.getForToken() != null) {    // 'for' '(' [ForStmt] ';' [Cond] ';' [ForStmt] ')' Stmt // 1. 无缺省 2. 缺省第一个 ForStmt 3. 缺省Cond 4. 缺省第二个ForStmt
-            // todo
+            /* 第一步 处理forStmt1 */
+            // 若非空，解析forStmtNode1
+            if (stmtNode.getForStmtNode1() != null) {
+                visitForStmtNode(stmtNode.getForStmtNode1());
+            }
+
+            /* 第二步 处理cond */
+            // 创建condBlock, stmtBlock, followBlock
+            BasicBlock condBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+            BasicBlock stmtBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+            BasicBlock followBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+            // 添加无条件跳转指令 无条件跳转到condBlock
+            JumpInst jumpInst = new JumpInst(condBlock);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(jumpInst);
+
+            // 添加condBlock到当前函数
+            irBuilder.addBasicBlockToCurFunction(condBlock);
+            // 设置当前基本块为condBlock
+            irBuilder.setCurBasicBlock(condBlock);
+            // 解析cond
+            if (stmtNode.getCondNode() == null) {   // 如果cond为空，相当于条件永真，无条件跳转到stmtBlock
+                // 创建无条件跳转指令 跳转到stmtBlock
+                JumpInst jumpInst1 = new JumpInst(stmtBlock);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(jumpInst1);
+            } else {
+                // 设置当前条件真目标基本块为stmtBlock
+                irBuilder.setCurTrueBlock(stmtBlock);
+                // 设置当前条件假目标基本块为followBlock
+                irBuilder.setCurFalseBlock(followBlock);
+                // 解析条件(满足短路求值)
+                visitCondNode(stmtNode.getCondNode());
+            }
+
+            /* 第三步 处理stmt */
+            // 创建forStmt2Block
+            BasicBlock forStmt2Block = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+            // 设置continue和break的跳转目标基本块
+            irBuilder.setContinueTargetBlock(forStmt2Block);
+            irBuilder.setBreakTargetBlock(followBlock);
+
+            // 添加stmtBlock到当前函数
+            irBuilder.addBasicBlockToCurFunction(stmtBlock);
+            // 设置当前基本块为stmtBlock
+            irBuilder.setCurBasicBlock(stmtBlock);
+            // 解析stmtBlock
+            visitStmtNode(stmtNode.getStmtNode());
+            // 最后无条件跳转到forStmt2Block
+            JumpInst jumpInst1 = new JumpInst(forStmt2Block);
+            // 添加指令到当前基本块(curBlock在上面解析stmtBlock时更新, 此时可以正确嵌套)
+            irBuilder.addInstToCurBasicBlock(jumpInst1);
+
+            /* 第四步 处理forStmt2 */
+            // 添加forStmt2Block到函数
+            irBuilder.addBasicBlockToCurFunction(forStmt2Block);
+            // 设置当前基本块为forStmt2Block
+            irBuilder.setCurBasicBlock(forStmt2Block);
+            // 若非空，解析forStmtNode2
+            if (stmtNode.getForStmtNode2() != null) {
+                visitForStmtNode(stmtNode.getForStmtNode2());
+            }
+            // 创建无条件跳转指令 跳转到condBlock
+            JumpInst jumpInst2 = new JumpInst(condBlock);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(jumpInst2);
+
+            /* 第五步 进入followBlock */
+            // 添加followBlock到当前函数
+            irBuilder.addBasicBlockToCurFunction(followBlock);
+            // 设置当前基本块为followBlock
+            irBuilder.setCurBasicBlock(followBlock);
         } else if (stmtNode.getBreakToken() != null) {  // 'break' ';'
-            // todo
+            // 创建无条件跳转指令 跳转到curFollowBlock
+            JumpInst jumpInst = new JumpInst(irBuilder.getBreakTargetBlock());
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(jumpInst);
         } else if (stmtNode.getContinueToken() != null) {   // 'continue' ';'
-            // todo
+            // 创建无条件跳转指令 跳转到curForStmt2Block
+            JumpInst jumpInst = new JumpInst(irBuilder.getContinueTargetBlock());
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(jumpInst);
         } else if (stmtNode.getReturnToken() != null) {    // 'return' [Exp] ';' // 1.有Exp 2.无Exp
             if (stmtNode.getExpNode() == null) {    // 'return';
                 if (irBuilder.getCurFunction().getType() == IntegerType.i32) {  // 若函数类型为int, 则 return; 转换为 ret i32 0
@@ -399,7 +553,6 @@ public class IRGenerator {
                 // todo
             }
         } else if (stmtNode.getlValNode() != null && stmtNode.getGetintToken() != null) {   // LVal '=' 'getint''('')'';'
-            // todo
             if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组元素
                 // 创建call指令
                 Function getintFunc = (Function) irSymbolManager.findSymbol("getint").getSymbol();
@@ -421,9 +574,29 @@ public class IRGenerator {
         }
     }
 
+    // 18.语句 ForStmt → LVal '=' Exp // 存在即可
+    private void visitForStmtNode(ForStmtNode forStmtNode) {
+        if (forStmtNode.getlValNode().getExpNodes().isEmpty()) {    // 如果左边不是数组元素
+            // 解析表达式
+            Value expValue = visitExpNode(forStmtNode.getExpNode());
+            // 创建store指令
+            String ident = forStmtNode.getlValNode().getIdent().getValue();
+            StoreInst storeInst = new StoreInst(expValue, irSymbolManager.findSymbol(ident).getSymbol());
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(storeInst);
+        } else {    // 如果左边是数组元素
+            // todo
+        }
+    }
+
     // 19.表达式 Exp → AddExp 注：SysY 表达式是int 型表达式 // 存在即可
     private Value visitExpNode(ExpNode expNode) {
         return visitAddExpNode(expNode.getAddExpNode());
+    }
+
+    // 20.条件表达式 Cond → LOrExp // 存在即可
+    private void visitCondNode(CondNode condNode) {
+        visitLOrExpNode(condNode.getlOrExpNode());
     }
 
     // 21.左值表达式 LVal → Ident {'[' Exp ']'} //1.普通变量 2.一维数组 3.二维数组
@@ -461,25 +634,54 @@ public class IRGenerator {
 
     // 24.一元表达式 UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' // 3种情况均需覆盖,函数调用也需要覆盖FuncRParams的不同情况
     // | UnaryOp UnaryExp // 存在即可
+
+    /***
+     *
+     * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
+     */
     private Value visitUnaryExpNode(UnaryExpNode unaryExpNode) {
-        if (unaryExpNode.getPrimaryExpNode() != null) { // UnaryExp → PrimaryExp    // 不生成指令，只返回值
+        if (unaryExpNode.getPrimaryExpNode() != null) { // UnaryExp → PrimaryExp    // 不生成指令，只返回值 // 返回值类型为i1或i32
             return visitPrimaryExpNode(unaryExpNode.getPrimaryExpNode());
         } else if (unaryExpNode.getUnaryOpNode() != null) { // UnaryExp → UnaryOp UnaryExp
             // 此处解析 UnaryOp
             // 25.单目运算符 UnaryOp → '+' | '−' | '!' //注：'!'仅出现在条件表达式中 // 三种均需覆盖
             UnaryOpNode unaryOpNode = unaryExpNode.getUnaryOpNode();
-            if (unaryOpNode.getToken().getType() == TokenType.PLUS) {   // 如果是正号，不生成指令，返回加号后面的值
+            Token op = unaryOpNode.getToken();
+            if (op.getType() == TokenType.PLUS) {   // 如果是正号，不生成指令，返回正号后面的值 // 返回值类型为i1或i32
                 return visitUnaryExpNode(unaryExpNode.getUnaryExpNode());
-            } else if (unaryOpNode.getToken().getType() == TokenType.MINU) {    // 如果是负号，生成指令
+            } else if (op.getType() == TokenType.MINU) {    // 如果是负号，生成指令 // 将 -a 转换为 0 - a // 返回值类型为i1或i32
                 // 必须先访问子结点，再分配局部寄存器编号，确保编号顺序递增
                 Value operand2 = visitUnaryExpNode(unaryExpNode.getUnaryExpNode());
+                // 如果operand2类型不是i32，转换到i32
+                if (operand2.getType() != IntegerType.i32) {
+                    // 插入zext指令
+                    ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand2, IntegerType.i32);
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(zextInst);
+                    // 更新操作数2
+                    operand2 = zextInst;
+                }
                 // 创建指令
                 BinaryInst binaryInst = new BinaryInst(Opcode.sub, irBuilder.genLocalVarName(), new Constant(IntegerType.i32, 0), operand2);
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(binaryInst);
                 return binaryInst;
-            } else {    // 如果是'!'
-                return null;    // todo
+            } else {    // 如果是'!' // 将 !a 转换为 a == 0    // 返回值类型为i1
+                Value operand1 = visitUnaryExpNode(unaryExpNode.getUnaryExpNode());
+                // 如果operand1类型不是i32，转换到i32
+                if (operand1.getType() != IntegerType.i32) {
+                    // 插入zext指令
+                    ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand1, IntegerType.i32);
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(zextInst);
+                    // 更新操作数1
+                    operand1 = zextInst;
+                }
+                // 创建指令
+                IcmpInst icmpInst = new IcmpInst(irBuilder.genLocalVarName(), IcmpInst.IcmpKind.eq, operand1, new Constant(IntegerType.i32, 0));
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(icmpInst);
+                return icmpInst;
             }
         } else {    // UnaryExp → Ident '(' [FuncRParams] ')'
             String ident = unaryExpNode.getIdent().getValue();
@@ -494,6 +696,8 @@ public class IRGenerator {
         }
     }
 
+    // 25.单目运算符 UnaryOp → '+' | '−' | '!' //注：'!'仅出现在条件表达式中 // 三种均需覆盖
+
     // 26.函数实参表 FuncRParams → Exp { ',' Exp } // 1.花括号内重复0次 2.花括号内重复多次 3.Exp需要覆盖数组传参和部分数组传参
     ArrayList<Value> visitFuncRParams(FuncRParamsNode funcRParamsNode) {
         ArrayList<Value> args = new ArrayList<>();
@@ -507,6 +711,11 @@ public class IRGenerator {
 
     // 27.乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖
     //【消除左递归】 MulExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
+
+    /***
+     *
+     * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
+     */
     private Value visitMulExpNode(MulExpNode mulExpNode) {
         if (mulExpNode.getMulExpNode() == null) {   // MulExp → UnaryExp
             return visitUnaryExpNode(mulExpNode.getUnaryExpNode());
@@ -514,7 +723,25 @@ public class IRGenerator {
             // 访问子结点
             // 必须按此顺序，确保寄存器编号递增
             Value operand1 = visitMulExpNode(mulExpNode.getMulExpNode());
+            // 如果operand1类型不是i32, 转换到i32
+            if (operand1.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand1, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数1
+                operand1 = zextInst;
+            }
             Value operand2 = visitUnaryExpNode(mulExpNode.getUnaryExpNode());
+            // 如果operand2类型不是i32, 转换到i32
+            if (operand2.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand2, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数2
+                operand2 = zextInst;
+            }
             // 创建指令
             BinaryInst binaryInst;
             Token op = mulExpNode.getOp();
@@ -533,6 +760,11 @@ public class IRGenerator {
 
     // 28.加减表达式 AddExp → MulExp | AddExp ('+' | '−') MulExp // 1.MulExp 2.+ 需覆盖 3.- 需覆盖
     // 【消除左递归】 AddExp → MulExp {('+' | '−') MulExp}
+
+    /***
+     *
+     * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
+     */
     private Value visitAddExpNode(AddExpNode addExpNode) {
         if (addExpNode.getAddExpNode() == null) {   // AddExp → MulExp
             return visitMulExpNode(addExpNode.getMulExpNode());
@@ -540,7 +772,25 @@ public class IRGenerator {
             // 访问子结点
             // 必须按此顺序，确保寄存器编号递增
             Value operand1 = visitAddExpNode(addExpNode.getAddExpNode());
+            // 如果operand1类型不是i32, 转换到i32
+            if (operand1.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand1, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数1
+                operand1 = zextInst;
+            }
             Value operand2 = visitMulExpNode(addExpNode.getMulExpNode());
+            // 如果operand2类型不是i32, 转换到i32
+            if (operand2.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand2, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数2
+                operand2 = zextInst;
+            }
             // 创建指令
             BinaryInst binaryInst;
             Token op = addExpNode.getOp();
@@ -554,4 +804,191 @@ public class IRGenerator {
             return binaryInst;
         }
     }
+
+    // 29.关系表达式 RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp // 1.AddExp 2.< 3.> 4.<= 5.>= 均需覆盖
+    // 【消除左递归】 RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp}
+
+    /***
+     *
+     * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
+     */
+    private Value visitRelExpNode(RelExpNode relExpNode) {
+        if (relExpNode.getRelExpNode() == null) {   // RelExp → AddExp // 返回类型为i32
+            return visitAddExpNode(relExpNode.getAddExpNode());
+        } else {    // RelExp → RelExp ('<' | '>' | '<=' | '>=') AddExp // 返回类型为i1
+            // 解析operand1
+            Value operand1 = visitRelExpNode(relExpNode.getRelExpNode());
+            // 如果operand1类型不是i32, 转换到i32
+            if (operand1.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand1, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数1
+                operand1 = zextInst;
+            }
+            // 解析比较符号
+            Token op = relExpNode.getOp();
+            IcmpInst.IcmpKind icmpKind;
+            if (op.getType() == TokenType.LSS) {  // <
+                icmpKind = IcmpInst.IcmpKind.slt;
+            } else if (op.getType() == TokenType.LEQ) { // <=
+                icmpKind = IcmpInst.IcmpKind.sle;
+            } else if (op.getType() == TokenType.GRE) { // >
+                icmpKind = IcmpInst.IcmpKind.sgt;
+            } else {    // >=
+                icmpKind = IcmpInst.IcmpKind.sge;
+            }
+            // 解析operand2
+            Value operand2 = visitAddExpNode(relExpNode.getAddExpNode());
+            // 如果operand2类型不是i32, 转换到i32
+            if (operand2.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand2, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数2
+                operand2 = zextInst;
+            }
+            // 创建icmp指令
+            IcmpInst icmpInst = new IcmpInst(irBuilder.genLocalVarName(), icmpKind, operand1, operand2);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(icmpInst);
+            return icmpInst;
+        }
+    }
+
+    // 30.相等性表达式 EqExp → RelExp | EqExp ('==' | '!=') RelExp // 1.RelExp 2.== 3.!= 均需覆盖
+    // 【消除左递归】 EqExp → RelExp { ('==' | '!=') RelExp}
+
+    /***
+     *
+     * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
+     */
+    private Value visitEqExpNode(EqExpNode eqExpNode) {
+        if (eqExpNode.getEqExpNode() == null) { // EqExp → RelExp   // 返回值类型为i1或i32
+            return visitRelExpNode(eqExpNode.getRelExpNode());
+        } else {    // EqExp → EqExp ('==' | '!=') RelExp   // 返回值类型为i1
+            // 解析operand1
+            Value operand1 = visitEqExpNode(eqExpNode.getEqExpNode());
+            // 如果operand1类型不是i32，转换到i32
+            if (operand1.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand1, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数1
+                operand1 = zextInst;
+            }
+            // 解析比较符号
+            Token op = eqExpNode.getOp();
+            IcmpInst.IcmpKind icmpKind;
+            if (op.getType() == TokenType.EQL) {    // ==
+                icmpKind = IcmpInst.IcmpKind.eq;
+            } else {    // !=
+                icmpKind = IcmpInst.IcmpKind.ne;
+            }
+            // 解析operand2
+            Value operand2 = visitRelExpNode(eqExpNode.getRelExpNode());
+            // 如果operand2类型不是i32, 转换到i32
+            if (operand2.getType() != IntegerType.i32) {
+                // 插入zext指令
+                ZextInst zextInst = new ZextInst(irBuilder.genLocalVarName(), operand2, IntegerType.i32);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(zextInst);
+                // 更新操作数2
+                operand2 = zextInst;
+            }
+            // 创建icmp指令
+            IcmpInst icmpInst = new IcmpInst(irBuilder.genLocalVarName(), icmpKind, operand1, operand2);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(icmpInst);
+            return icmpInst;
+        }
+    }
+
+    // 31.逻辑与表达式 LAndExp → EqExp | LAndExp '&&' EqExp // 1.EqExp 2.&& 均需覆盖
+    // 【消除左递归】 LAndExp → EqExp {'&&' EqExp}
+    private void visitLAndExpNode(LAndExpNode lAndExpNode) {
+        if (lAndExpNode.getlAndExpNode() == null) { // LAndExp → EqExp
+            // 解析eqExp
+            Value cond = visitEqExpNode(lAndExpNode.getEqExpNode());
+            // 处理简化的cond //比如把 if(a) 变为 if(a != 0), 即需要插入一条icmp语句 cond != 0, 使其返回i1类型
+            if (cond.getType() != IntegerType.i1) { // 如果类型不为i1，说明一定是简化的条件，也即lAndExpNode.eqExpNode下面只有eqExpNode结点，而没有relExpNode结点
+                Value operand2 = new Constant(IntegerType.i32, 0);
+                // 创建icmp指令
+                IcmpInst icmpInst = new IcmpInst(irBuilder.genLocalVarName(), IcmpInst.IcmpKind.ne, cond, operand2);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(icmpInst);
+                // 更新cond
+                cond = icmpInst;
+            }
+            // 创建条件跳转指令
+            BranchInst branchInst = new BranchInst(cond, irBuilder.getCurTrueBlock(), irBuilder.getCurFalseBlock());
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(branchInst);
+        } else {    // LAndExp → LAndExp '&&' EqExp
+            // 保存右边的条件真基本块
+            BasicBlock rightTrue = irBuilder.getCurTrueBlock();
+            // 创建右边基本块
+            BasicBlock right = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+
+            // 让右边作为左边的条件真基本块
+            irBuilder.setCurTrueBlock(right);
+            // 解析左边
+            visitLAndExpNode(lAndExpNode.getlAndExpNode());
+
+            // 添加right基本块到当前函数(添加时机 决定输出顺序)
+            irBuilder.addBasicBlockToCurFunction(right);
+            // 还原右边的条件真基本块
+            irBuilder.setCurTrueBlock(rightTrue);
+            // 设置右边基本块为curBasicBlock
+            irBuilder.setCurBasicBlock(right);
+            // 解析右边eqExp
+            Value cond = visitEqExpNode(lAndExpNode.getEqExpNode());
+            // 处理简化的cond //比如把 if(a) 变为 if(a != 0), 即需要插入一条icmp语句 cond != 0, 使其返回i1类型
+            if (cond.getType() != IntegerType.i1) { // 如果类型不为i1，说明一定是简化的条件，也即lAndExpNode.eqExpNode下面只有eqExpNode结点，而没有relExpNode结点
+                Value operand2 = new Constant(IntegerType.i32, 0);
+                // 创建icmp指令
+                IcmpInst icmpInst = new IcmpInst(irBuilder.genLocalVarName(), IcmpInst.IcmpKind.ne, cond, operand2);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(icmpInst);
+                // 更新cond
+                cond = icmpInst;
+            }
+            // 创建条件跳转指令
+            BranchInst branchInst = new BranchInst(cond, irBuilder.getCurTrueBlock(), irBuilder.getCurFalseBlock());
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(branchInst);
+        }
+    }
+
+    // 32.逻辑或表达式 LOrExp → LAndExp | LOrExp '||' LAndExp // 1.LAndExp 2.|| 均需覆盖
+    // 【消除左递归】 LOrExp → LAndExp {'||' LAndExp}
+    private void visitLOrExpNode(LOrExpNode lOrExpNode) {
+        if (lOrExpNode.getlOrExpNode() == null) {   // LOrExp → LAndExp
+            visitLAndExpNode(lOrExpNode.getlAndExpNode());
+        } else {    // LOrExp → LOrExp '||' LAndExp
+            // 保存右边的条件假基本块
+            BasicBlock rightFalse = irBuilder.getCurFalseBlock();
+            // 创建右边基本块
+            BasicBlock right = new BasicBlock(irBuilder.genBasicBlockLabel(), irBuilder.getCurFunction());
+
+            // 让右边作为左边的条件假基本块
+            irBuilder.setCurFalseBlock(right);
+            // 解析左边
+            visitLOrExpNode(lOrExpNode.getlOrExpNode());
+
+            // 添加right基本块到当前函数(添加时机 决定输出顺序)
+            irBuilder.addBasicBlockToCurFunction(right);
+            // 还原右边的条件假基本块
+            irBuilder.setCurFalseBlock(rightFalse);
+            // 设置右边基本块为curBasicBlock
+            irBuilder.setCurBasicBlock(right);
+            // 解析右边lAndExp
+            visitLAndExpNode(lOrExpNode.getlAndExpNode());
+        }
+    }
+
+    // 33.常量表达式 ConstExp → AddExp 注：使用的Ident 必须是常量 // 存在即可
 }

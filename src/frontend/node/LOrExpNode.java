@@ -19,6 +19,14 @@ public class LOrExpNode extends Node {
         this.lAndExpNode = lAndExpNode;
     }
 
+    public LOrExpNode getlOrExpNode() {
+        return lOrExpNode;
+    }
+
+    public LAndExpNode getlAndExpNode() {
+        return lAndExpNode;
+    }
+
     // 32.逻辑或表达式 LOrExp → LAndExp | LOrExp '||' LAndExp // 1.LAndExp 2.|| 均需覆盖
     // 【消除左递归】 LOrExp → LAndExp {'||' LAndExp}
     @Override

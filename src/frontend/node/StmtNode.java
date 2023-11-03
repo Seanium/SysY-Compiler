@@ -163,8 +163,36 @@ public class StmtNode extends Node {
         return expNodes;
     }
 
+    public Token getElseToken() {
+        return elseToken;
+    }
+
+    public CondNode getCondNode() {
+        return condNode;
+    }
+
+    public StmtNode getStmtNode1() {
+        return stmtNode1;
+    }
+
+    public StmtNode getStmtNode2() {
+        return stmtNode2;
+    }
+
     public Token getFormatString() {
         return formatString;
+    }
+
+    public ForStmtNode getForStmtNode1() {
+        return forStmtNode1;
+    }
+
+    public ForStmtNode getForStmtNode2() {
+        return forStmtNode2;
+    }
+
+    public StmtNode getStmtNode() {
+        return stmtNode;
     }
 
     // 17.语句 Stmt → LVal '=' Exp ';' // 每种类型的语句都要覆盖

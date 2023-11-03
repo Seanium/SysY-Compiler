@@ -19,6 +19,14 @@ public class LAndExpNode extends Node {
         this.eqExpNode = eqExpNode;
     }
 
+    public LAndExpNode getlAndExpNode() {
+        return lAndExpNode;
+    }
+
+    public EqExpNode getEqExpNode() {
+        return eqExpNode;
+    }
+
     // 31.逻辑与表达式 LAndExp → EqExp | LAndExp '&&' EqExp // 1.EqExp 2.&& 均需覆盖
     // 【消除左递归】 LAndExp → EqExp {'&&' EqExp}
     @Override

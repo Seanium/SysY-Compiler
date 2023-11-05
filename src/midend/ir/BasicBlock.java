@@ -6,17 +6,21 @@ import midend.ir.type.OtherType;
 import java.util.ArrayList;
 
 public class BasicBlock extends Value {
-    private final Function parentFunction;    //todo 是否有必要设置所属函数这个属性
+    private final Function parentFunction;
     private final ArrayList<Inst> instructions;
 
     public BasicBlock(String name, Function parentFunction) {
-        super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label todo 基本块的右值类型是什么？
+        super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
         this.parentFunction = parentFunction;
         this.instructions = new ArrayList<>();
     }
 
     public void addInst(Inst inst) {
         instructions.add(inst);
+    }
+
+    public ArrayList<Inst> getInstructions() {
+        return instructions;
     }
 
     @Override

@@ -82,7 +82,7 @@ public class PrimaryExpNode extends Node {
             return expNode.getAddExpNode().calVal();
         } else if (lValNode != null) {  // PrimaryExp → LVal
             if (!lValNode.getExpNodes().isEmpty()) {
-                throw new RuntimeException("error: 初始化元素[数组元素]不是编译时常量");
+                throw new RuntimeException("error: 初始化元素【数组元素】不是编译时常量");
             }
             Value initValue = IRSymbolManager.getInstance().findSymbol(lValNode.getIdent().getValue()).getInitValue();
             if (initValue == null) {    // 如果没有初值

@@ -20,7 +20,6 @@ public class CallInst extends Inst {
         super(targetFunc.getType(), name, Opcode.call); // 右值类型是函数返回值类型
         this.targetFunc = targetFunc;
         this.args = args;
-        // todo addOperand的内容为什么包括实参
         addOperand(targetFunc);
         for (Value arg : args) {
             addOperand(arg);

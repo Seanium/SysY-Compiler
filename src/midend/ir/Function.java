@@ -7,7 +7,7 @@ import java.util.ArrayList;
 public class Function extends Value {
 
 
-    private ArrayList<Param> params;    // 没有形参则为无元素
+    private final ArrayList<Param> params;    // 没有形参则为无元素
     private final ArrayList<BasicBlock> basicBlocks;
     private boolean isLib;  // 是否为库函数
 
@@ -23,11 +23,11 @@ public class Function extends Value {
     }
 
     /***
-     *
-     * @param params 设置形参列表。如果没有形参，则不必调用该函数。
+     * 添加形参到形参列表。如果没有形参，则不必调用该函数。
+     * @param param 要添加的形参。
      */
-    public void setParams(ArrayList<Param> params) {
-        this.params = params;
+    public void addParam(Param param) {
+        this.params.add(param);
     }
 
     /***
@@ -43,6 +43,10 @@ public class Function extends Value {
 
     public void addBasicBlock(BasicBlock basicBlock) {
         basicBlocks.add(basicBlock);
+    }
+
+    public ArrayList<BasicBlock> getBasicBlocks() {
+        return basicBlocks;
     }
 
     @Override

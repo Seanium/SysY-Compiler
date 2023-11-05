@@ -3,9 +3,6 @@ package frontend.node;
 import frontend.symbol.ArraySymbol;
 import frontend.symbol.Param;
 import frontend.token.Token;
-import midend.IRBuilder;
-import midend.ir.type.IntegerType;
-import midend.ir.type.Type;
 
 import java.util.ArrayList;
 
@@ -15,7 +12,6 @@ public class FuncFParamNode extends Node {
     private final ArrayList<Token> leftBrackets;
     private final ArrayList<ConstExpNode> constExpNodes;
     private final ArrayList<Token> rightBrackets;
-    private midend.ir.Param IRParam;
 
     public FuncFParamNode(BTypeNode bTypeNode, Token ident, ArrayList<Token> leftBrackets, ArrayList<ConstExpNode> constExpNodes, ArrayList<Token> rightBrackets) {
         this.bTypeNode = bTypeNode;
@@ -23,11 +19,18 @@ public class FuncFParamNode extends Node {
         this.leftBrackets = leftBrackets;
         this.constExpNodes = constExpNodes;
         this.rightBrackets = rightBrackets;
-        this.IRParam = null;
     }
 
     public Token getIdent() {
         return ident;
+    }
+
+    public ArrayList<Token> getLeftBrackets() {
+        return leftBrackets;
+    }
+
+    public ArrayList<ConstExpNode> getConstExpNodes() {
+        return constExpNodes;
     }
 
     public Param toParam() {
@@ -57,14 +60,5 @@ public class FuncFParamNode extends Node {
         }
         sb.append("<FuncFParam>\n");
         return sb.toString();
-    }
-
-    public midend.ir.Param toIRParam() {
-        // todo 考虑数组，计算形参实际维数
-        if (IRParam == null) {  // 如果未创建过，则new (因为每次函数定义会访问两次形参结点，第一次是填充符号表，第二次是创建形参相关语句)
-            Type type = IntegerType.i32;
-            IRParam = new midend.ir.Param(type, IRBuilder.getInstance().genLocalVarName());
-        }
-        return IRParam;
     }
 }

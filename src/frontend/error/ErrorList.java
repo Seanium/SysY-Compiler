@@ -6,7 +6,7 @@ import java.util.Iterator;
 
 public class ErrorList {
     private static ErrorList instance;
-    final ArrayList<Error> errors;
+    private final ArrayList<Error> errors;
 
     private ErrorList() {
         this.errors = new ArrayList<>();

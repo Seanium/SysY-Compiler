@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class Value {
     protected final Type type;
-    protected final String name;
+    protected String name;
     protected final ArrayList<Use> useList;
 
     public Value(Type type, String name) {

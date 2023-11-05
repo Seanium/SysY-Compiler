@@ -1,9 +1,9 @@
 package frontend.token;
 
 public class Token {
-    final TokenType type;
-    final String value;
-    final int lineNum;
+    private final TokenType type;
+    private final String value;
+    private final int lineNum;
 
     public Token(TokenType type, String value, int lineNum) {
         this.type = type;

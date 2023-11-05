@@ -93,7 +93,7 @@ public class UnaryExpNode extends Node {
         if (primaryExpNode != null) {   // UnaryExp → PrimaryExp
             return primaryExpNode.calVal();
         } else if (ident != null) { // UnaryExp → Ident '(' [FuncRParams] ')'
-            throw new RuntimeException("error: 初始化元素[函数返回值]不是编译时常量");
+            throw new RuntimeException("error: 初始化元素【函数返回值】不是编译时常量");
         } else {    // UnaryExp → UnaryOp UnaryExp
             if (unaryOpNode.getToken().getType() == TokenType.PLUS) {
                 return unaryExpNode.calVal();

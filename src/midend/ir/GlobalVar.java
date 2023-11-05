@@ -5,11 +5,11 @@ import midend.ir.type.Type;
 
 public class GlobalVar extends User {   // todo 可能不需要继承User
 
-    final Constant initValue;    // todo 采用Constant类型是否合适
-    final boolean isConst;
+    private final Constant initValue;   // 在符号表中也存有初值。此处的属性是用于toString。
+    private final boolean isConst;
 
     /***
-     *
+     * 非数组的全局常量，非数组的全局变量。
      * @param targetType 右值(指针类型)解引用后的类型，即要存储的变量类型
      * @param name 右值名
      * @param initValue 初始值
@@ -28,13 +28,5 @@ public class GlobalVar extends User {   // todo 可能不需要继承User
         } else {    // 全局变量
             return name + " = dso_local global i32 " + initValue.getName();
         }
-    }
-
-    public boolean isConst() {
-        return isConst;
-    }
-
-    public Constant getInitValue() {
-        return initValue;
     }
 }

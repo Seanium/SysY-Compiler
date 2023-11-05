@@ -7,10 +7,7 @@ import midend.ir.*;
 import midend.ir.inst.*;
 import midend.ir.symbol.IRSymbol;
 import midend.ir.symbol.IRSymbolManager;
-import midend.ir.type.IntegerType;
-import midend.ir.type.PointerType;
-import midend.ir.type.Type;
-import midend.ir.type.VoidType;
+import midend.ir.type.*;
 
 import java.util.ArrayList;
 
@@ -46,10 +43,8 @@ public class IRGenerator {
         irBuilder.addFunctionToModule(getintFunc);
 
         // 创建库函数声明 void @putint(i32)
-        ArrayList<Param> putintParams = new ArrayList<>();
-        putintParams.add(new Param(IntegerType.i32, ""));
         Function putintFunc = new Function("putint", VoidType.voidType);
-        putintFunc.setParams(putintParams);
+        putintFunc.addParam(new Param(IntegerType.i32, ""));
         putintFunc.setIsLib();
         // 添加函数到符号表
         irSymbolManager.addSymbol("putint", new IRSymbol(putintFunc, null));
@@ -57,10 +52,8 @@ public class IRGenerator {
         irBuilder.addFunctionToModule(putintFunc);
 
         // 创建库函数声明 void @putch(i32)
-        ArrayList<Param> putchParams = new ArrayList<>();
-        putchParams.add(new Param(IntegerType.i32, ""));
         Function putchFunc = new Function("putch", VoidType.voidType);
-        putchFunc.setParams(putchParams);
+        putchFunc.addParam(new Param(IntegerType.i32, ""));
         putchFunc.setIsLib();
         // 添加函数到符号表
         irSymbolManager.addSymbol("putch", new IRSymbol(putchFunc, null));
@@ -68,10 +61,8 @@ public class IRGenerator {
         irBuilder.addFunctionToModule(putchFunc);
 
         // 创建库函数声明 void @putstr(i8*)
-        ArrayList<Param> putstrParams = new ArrayList<>();
-        putstrParams.add(new Param(new PointerType(IntegerType.i8), ""));
         Function putstrFunc = new Function("putstr", VoidType.voidType);
-        putstrFunc.setParams(putstrParams);
+        putstrFunc.addParam(new Param(new PointerType(IntegerType.i8), ""));
         putstrFunc.setIsLib();
         // 添加函数到符号表
         irSymbolManager.addSymbol("putstr", new IRSymbol(putstrFunc, null));
@@ -114,7 +105,7 @@ public class IRGenerator {
         if (irSymbolManager.isGlobal()) {   // 如果是全局常量
             if (constDefNode.getConstExpNodes().isEmpty()) {    // 如果不是数组
                 // 创建全局常量
-                int val = constDefNode.getConstInitValNode().getConstExpNode().getAddExpNode().calVal();   // 计算等号右侧初值
+                int val = visitConstExpNode(constDefNode.getConstInitValNode().getConstExpNode());  // 计算等号右侧初值
                 Constant initValue = new Constant(IntegerType.i32, val);
                 GlobalVar globalVar = new GlobalVar(IntegerType.i32, ident, initValue, true);
                 // 添加全局常量到模块
@@ -122,7 +113,28 @@ public class IRGenerator {
                 // 添加全局常量到符号表
                 irSymbolManager.addSymbol(ident, new IRSymbol(globalVar, initValue));
             } else {    // 如果是数组
-                //todo
+                // 解析数组维度
+                ArrayList<Integer> dims = new ArrayList<>();
+                for (ConstExpNode constExpNode : constDefNode.getConstExpNodes()) {
+                    int dim = visitConstExpNode(constExpNode);
+                    dims.add(dim);
+                }
+                int len = irBuilder.calLen(dims);
+                // 创建数组初值
+                ArrayInitValue arrayInitValue = new ArrayInitValue(IntegerType.i32, new ArrayList<>());
+                // 解析数组初值
+                if (constDefNode.getConstInitValNode().getConstInitValNodes().isEmpty()) {  // 如果是 const int a[2][3] = {}; 这种大括号内为空的形式，需要给初值0
+                    arrayInitValue.addZeros(len);
+                } else {    // 如果大括号内不为空
+                    irBuilder.setCurArrayInitValue(arrayInitValue);
+                    visitConstInitValNode(constDefNode.getConstInitValNode());
+                }
+                // 创建全局数组常量
+                GlobalArray globalArray = new GlobalArray(ident, dims, len, arrayInitValue, true);
+                // 添加全局数组常量到模块
+                irBuilder.addGlobalArray(globalArray);
+                // 添加全局数组常量到符号表
+                irSymbolManager.addSymbol(ident, new IRSymbol(globalArray, arrayInitValue));
             }
         } else {    // 如果是局部常量
             if (constDefNode.getConstExpNodes().isEmpty()) {    // 如果不是数组
@@ -131,7 +143,7 @@ public class IRGenerator {
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(allocaInst);
                 // 创建store指令
-                int val = constDefNode.getConstInitValNode().getConstExpNode().getAddExpNode().calVal();   // 计算等号右侧初值
+                int val = visitConstExpNode(constDefNode.getConstInitValNode().getConstExpNode());  // 计算等号右侧初值
                 Constant initValue = new Constant(IntegerType.i32, val);
                 StoreInst storeInst = new StoreInst(initValue, allocaInst);
                 // 添加指令到当前基本块
@@ -139,13 +151,67 @@ public class IRGenerator {
                 // 添加局部常量到符号表
                 irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, initValue));
             } else {    // 如果是数组
-
+                // 解析数组维度
+                ArrayList<Integer> dims = new ArrayList<>();
+                for (ConstExpNode constExpNode : constDefNode.getConstExpNodes()) {
+                    int dim = visitConstExpNode(constExpNode);
+                    dims.add(dim);
+                }
+                int len = irBuilder.calLen(dims);
+                // 创建局部数组常量
+                LocalArray localArray = new LocalArray(dims, len, true);
+                // 创建alloca指令
+                String name = irBuilder.genLocalVarName();
+                localArray.setName(name);   // 设置局部数组的右值名为：数组的alloc语句中，赋值号左侧的寄存器名。
+                AllocaInst allocaInst = new AllocaInst(name, localArray.getType());
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(allocaInst);
+                // 创建数组初值
+                ArrayInitValue arrayInitValue = new ArrayInitValue(IntegerType.i32, new ArrayList<>());
+                // 解析数组初值
+                if (constDefNode.getConstInitValNode().getConstInitValNodes().isEmpty()) {    // 如果是 const int a[2][3] = {}; 这种大括号内为空的形式，需要给初值0
+                    arrayInitValue.addZeros(len);
+                } else {    // 如果大括号内不为空
+                    irBuilder.setCurArrayInitValue(arrayInitValue);
+                    visitConstInitValNode(constDefNode.getConstInitValNode());
+                }
+                // 为每个元素创建GEP和store指令
+                int offset = 0;
+                for (Constant constant : arrayInitValue.getConstants()) {
+                    // 创建GEP指令
+                    GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i32), irBuilder.genLocalVarName(), allocaInst, new Constant(IntegerType.i32, offset));
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(gepInst);
+                    // 创建store指令
+                    StoreInst storeInst = new StoreInst(constant, gepInst);
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(storeInst);
+                    // 更新偏移量
+                    offset++;
+                }
+                // 添加局部数组常量到符号表
+                irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, arrayInitValue));
             }
         }
     }
 
     // 6.常量初值 ConstInitVal → ConstExp
     // | '{' [ ConstInitVal { ',' ConstInitVal } ] '}' // 1.常表达式初值 2.一维数组初值 3.二维数组初值
+
+    /***
+     * 解析全局常量数组初值，使用前请先设置curArrayInitValue，用于递归添加元素。
+     */
+    private void visitConstInitValNode(ConstInitValNode constInitValNode) {
+        if (constInitValNode.getConstExpNode() != null) {   // ConstInitVal → ConstExp
+            // 添加一个i32初值
+            irBuilder.getCurArrayInitValue().addi32(visitConstExpNode(constInitValNode.getConstExpNode()));
+        } else { // ConstInitVal → '{' [ ConstInitVal { ',' ConstInitVal } ] '}'
+            // 递归解析
+            for (ConstInitValNode constInitValNode1 : constInitValNode.getConstInitValNodes()) {
+                visitConstInitValNode(constInitValNode1);
+            }
+        }
+    }
 
     // 7.变量声明 VarDecl → BType VarDef { ',' VarDef } ';' // 1.花括号内重复0次 2.花括号内重复多次
     private void visitVarDeclNode(VarDeclNode varDeclNode) {
@@ -162,9 +228,10 @@ public class IRGenerator {
             if (varDefNode.getConstExpNodes().isEmpty()) {  // 如果不是数组
                 // 创建全局变量
                 Constant initValue;
-                if (varDefNode.getInitValNode() == null) {  // 如果没有初值
-                    initValue = new Constant(IntegerType.i32, 0);   // 文法规定中，初始值应为未定义，此处设为0
+                if (varDefNode.getInitValNode() == null) {  // 如果没有初值 // 未显式初始化的全局变量，其（元素）值均被初始化为 0
+                    initValue = new Constant(IntegerType.i32, 0);
                 } else {    // 如果有初值
+                    // 全局变量的初值一定是可计算的
                     int val = varDefNode.getInitValNode().getExpNode().getAddExpNode().calVal();    // 计算等号右侧初值
                     initValue = new Constant(IntegerType.i32, val);
                 }
@@ -174,11 +241,43 @@ public class IRGenerator {
                 // 添加全局变量到符号表
                 irSymbolManager.addSymbol(ident, new IRSymbol(globalVar, initValue));
             } else {    // 如果是数组
-                //todo
+                // 解析数组维度
+                ArrayList<Integer> dims = new ArrayList<>();
+                for (ConstExpNode constExpNode : varDefNode.getConstExpNodes()) {
+                    int dim = visitConstExpNode(constExpNode);
+                    dims.add(dim);
+                }
+                int len = irBuilder.calLen(dims);
+                if (varDefNode.getInitValNode() == null) {  // 如果没有初值 // 未显式初始化的全局变量，其（元素）值均被初始化为 0
+                    // 创建数组初值
+                    ArrayInitValue arrayInitValue = new ArrayInitValue(IntegerType.i32, new ArrayList<>());
+                    arrayInitValue.addZeros(len);   // 需要给初值0
+                    // 创建全局数组变量
+                    GlobalArray globalArray = new GlobalArray(ident, dims, len, arrayInitValue, false);
+                    // 添加全局数组变量到模块
+                    irBuilder.addGlobalArray(globalArray);
+                    // 添加全局数组变量到符号表
+                    irSymbolManager.addSymbol(ident, new IRSymbol(globalArray, arrayInitValue));
+                } else {    // 如果有初值
+                    // 创建数组初值
+                    ArrayInitValue arrayInitValue = new ArrayInitValue(IntegerType.i32, new ArrayList<>());
+                    if (varDefNode.getInitValNode().getInitValNodes().isEmpty()) {  // 如果是 int a[2][3] = {}; 这种大括号内为空的形式，需要给初值0
+                        arrayInitValue.addZeros(len);
+                    } else {    // 如果大括号内不为空
+                        irBuilder.setCurArrayInitValue(arrayInitValue);
+                        visitInitValNodeForGlobal(varDefNode.getInitValNode());
+                    }
+                    // 创建全局数组变量
+                    GlobalArray globalArray = new GlobalArray(ident, dims, len, arrayInitValue, false);
+                    // 添加全局数组变量到模块
+                    irBuilder.addGlobalArray(globalArray);
+                    // 添加全局数组变量到符号表
+                    irSymbolManager.addSymbol(ident, new IRSymbol(globalArray, arrayInitValue));
+                }
             }
-        } else {  // 如果局部变量
+        } else {  // 如果是局部变量
             if (varDefNode.getConstExpNodes().isEmpty()) {  // 如果不是数组
-                if (varDefNode.getInitValNode() == null) {  // 如果没有初值 只创建alloca指令, 不创建store指令
+                if (varDefNode.getInitValNode() == null) {  // 如果没有初值 只创建alloca指令, 不创建store指令 // 未显式初始化的局部变量，其值是不确定的
                     // 创建alloca指令
                     AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
                     // 添加指令到当前基本块
@@ -191,7 +290,7 @@ public class IRGenerator {
                     // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(allocaInst);
                     // 解析初值
-                    Value initValue = visitInitValNode(varDefNode.getInitValNode());
+                    Value initValue = visitExpNode(varDefNode.getInitValNode().getExpNode());
                     // 创建store指令
                     StoreInst storeInst = new StoreInst(initValue, allocaInst);
                     // 添加指令到当前基本块
@@ -200,18 +299,89 @@ public class IRGenerator {
                     irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, initValue));
                 }
             } else {    // 如果是数组
-                //todo
+                // 解析数组维度
+                ArrayList<Integer> dims = new ArrayList<>();
+                for (ConstExpNode constExpNode : varDefNode.getConstExpNodes()) {
+                    int dim = visitConstExpNode(constExpNode);
+                    dims.add(dim);
+                }
+                int len = irBuilder.calLen(dims);
+                if (varDefNode.getInitValNode() == null) {  // 如果没有初值 // 未显式初始化的局部变量，其值是不确定的
+                    // 创建局部数组变量
+                    LocalArray localArray = new LocalArray(dims, len, false);
+                    // 创建alloc指令
+                    String name = irBuilder.genLocalVarName();
+                    localArray.setName(name);   // 设置局部数组的右值名为：数组的alloc语句中，赋值号左侧的寄存器名。
+                    AllocaInst allocaInst = new AllocaInst(name, localArray.getType());
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(allocaInst);
+                    // 添加局部数组变量到符号表
+                    irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
+                } else {    // 如果有初值
+                    // 创建局部数组变量
+                    LocalArray localArray = new LocalArray(dims, len, false);
+                    // 创建alloca指令
+                    String name = irBuilder.genLocalVarName();
+                    localArray.setName(name);   // 设置局部数组的右值名为：数组的alloc语句中，赋值号左侧的寄存器名。
+                    AllocaInst allocaInst = new AllocaInst(name, localArray.getType());
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(allocaInst);
+                    // 解析数组初值
+                    if (varDefNode.getInitValNode().getInitValNodes().isEmpty()) {  // 如果是 int a[2][3] = {}; // 未显式初始化的局部变量，其值是不确定的
+                        // 添加局部数组变量到符号表
+                        irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
+                    } else {    // 如果大括号内不为空
+                        // 解析局部数组变量初值。依次创建GEP，解析初值，创建store指令。
+                        irBuilder.setAllocaInst(allocaInst);
+                        irBuilder.setOffset(0);
+                        visitInitValNodeForLocal(varDefNode.getInitValNode());
+                        // 添加局部数组变量到符号表
+                        irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
+                    }
+                }
             }
         }
     }
 
     // 9.变量初值 InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'// 1.表达式初值 2.一维数组初值 3.二维数组初值
-    private Value visitInitValNode(InitValNode initValNode) {
-        if (initValNode.getExpNode() != null) { // 如果是表达式初值
-            return visitExpNode(initValNode.getExpNode());
-        } else {
-            //todo
-            return null;
+
+    /***
+     * 解析全局数组变量初值，使用前请先设置curArrayInitValue，用于递归添加元素。
+     */
+    private void visitInitValNodeForGlobal(InitValNode initValNode) {
+        if (initValNode.getExpNode() != null) { // InitVal → Exp
+            // 添加一个i32初值
+            irBuilder.getCurArrayInitValue().addi32(initValNode.getExpNode().getAddExpNode().calVal()); // 全局变量的初值一定是可计算的
+        } else {    // InitVal → '{' [ InitVal { ',' InitVal } ] '}'
+            // 递归解析
+            for (InitValNode initValNode1 : initValNode.getInitValNodes()) {
+                visitInitValNodeForGlobal(initValNode1);
+            }
+        }
+    }
+
+    /***
+     * 解析局部数组变量初值。依次创建GEP，解析初值，创建store指令。
+     */
+    private void visitInitValNodeForLocal(InitValNode initValNode) {
+        if (initValNode.getExpNode() != null) { // InitVal → Exp
+            // 创建GEP指令
+            GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i32), irBuilder.genLocalVarName(), irBuilder.getAllocaInst(), new Constant(IntegerType.i32, irBuilder.getOffset()));
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(gepInst);
+            // 解析初值
+            Value value = visitExpNode(initValNode.getExpNode());
+            // 创建store指令
+            StoreInst storeInst = new StoreInst(value, gepInst);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(storeInst);
+            // 更新偏移量
+            irBuilder.setOffset(irBuilder.getOffset() + 1);
+        } else {    // InitVal → '{' [ InitVal { ',' InitVal } ] '}'
+            // 递归解析
+            for (InitValNode initValNode1 : initValNode.getInitValNodes()) {
+                visitInitValNodeForLocal(initValNode1);
+            }
         }
     }
 
@@ -231,9 +401,6 @@ public class IRGenerator {
         // 进入函数作用域
         irSymbolManager.enterFunction();
 
-        // 向函数IR补充形参信息(形参位于函数内层作用域)
-        func.setParams(funcDefNode.getIRParams());
-
         // 创建基本块
         BasicBlock basicBlock = new BasicBlock(irBuilder.genBasicBlockLabel(), func);
         // 添加基本块到当前函数
@@ -246,6 +413,9 @@ public class IRGenerator {
 
         // 解析函数体
         visitBlockNode(funcDefNode.getBlockNode());
+
+        // 如果是void函数且最后没有return;，则补充return;
+        irBuilder.checkReturn(func);
     }
 
     // 11.主函数定义 MainFuncDef → 'int' 'main' '(' ')' Block // 存在main函数
@@ -286,23 +456,36 @@ public class IRGenerator {
     // 14.函数形参 FuncFParam → BType Ident ['[' ']' { '[' ConstExp ']' }] // 1.普通变量2.一维数组变量 3.二维数组变量
     private void visitFuncFParamNode(FuncFParamNode funcFParamNode) {
         String ident = funcFParamNode.getIdent().getValue();
-
-        // todo 考虑数组 计算形参实际的维度
-
-        // 如果是0维
-        // 创建alloca指令
-        AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
-        // 添加指令到当前基本块
-        irBuilder.addInstToCurBasicBlock(allocaInst);
-        // 创建store指令
-        StoreInst storeInst = new StoreInst(funcFParamNode.toIRParam(), allocaInst);
-        // 添加指令到当前基本块
-        irBuilder.addInstToCurBasicBlock(storeInst);
-        // 添加局部变量（此处为形参）到符号表
-        irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
-
-        // 如果是>0维
-        // todo
+        if (funcFParamNode.getLeftBrackets().isEmpty()) {   // 如果形参没有中括号，则类型为i32
+            // 创建 param
+            Param param = new Param(IntegerType.i32, irBuilder.genLocalVarName());
+            // 向函数IR添加param
+            irBuilder.getCurFunction().addParam(param);
+            // 创建alloca指令
+            AllocaInst allocaInst = new AllocaInst(irBuilder.genLocalVarName(), IntegerType.i32);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(allocaInst);
+            // 创建store指令
+            StoreInst storeInst = new StoreInst(param, allocaInst);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(storeInst);
+            // 添加形参到符号表
+            irSymbolManager.addSymbol(ident, new IRSymbol(allocaInst, null));
+        } else {    // 如果形参有中括号，则类型为 i32 的指针类型
+            // 创建 param
+            Param param = new Param(new PointerType(IntegerType.i32), irBuilder.genLocalVarName());
+            // 设置形参维数列表
+            ArrayList<Integer> dims = new ArrayList<>();
+            dims.add(1);    // 空缺的首个维度补为1。
+            for (ConstExpNode constExpNode : funcFParamNode.getConstExpNodes()) {
+                dims.add(visitConstExpNode(constExpNode));
+            }
+            param.setDims(dims);
+            // 向函数IR添加param
+            irBuilder.getCurFunction().addParam(param);
+            // 添加形参到符号表
+            irSymbolManager.addSymbol(ident, new IRSymbol(param, null));
+        }
     }
 
     // 15.语句块 Block → '{' { BlockItem } '}' // 1.花括号内重复0次 2.花括号内重复多次
@@ -512,30 +695,53 @@ public class IRGenerator {
                 irBuilder.addInstToCurBasicBlock(returnInst);
             }
         } else if (stmtNode.getPrintfToken() != null) { // 'printf''('FormatString{','Exp}')'';' // 1.有Exp 2.无Exp
-            // todo 待修改为数组形式 putstr
             String formatString = stmtNode.getFormatString().getValue();
             formatString = formatString.replace("\\n", "\n");
+            formatString = formatString.substring(1, formatString.length() - 1);    // 去除首尾的双引号
+            // 分割成%d和非%d的字符串数组
+            String[] split = formatString.split("(?<=%d)|(?=%d)");  // magic
             int formatExpIndex = 0;   // 当前是第几个格式占位符
-            for (int i = 1; i < formatString.length() - 1; i++) {
-                if (formatString.charAt(i) == '%') {
-                    // 创建call指令
+            for (String s : split) {
+                if (s.equals("%d")) {   // 如果是%d
+                    // 创建call指令，调用putint(i32)
                     Function putintFunc = (Function) irSymbolManager.findSymbol("putint").getSymbol();
                     Value arg = visitExpNode(stmtNode.getExpNodes().get(formatExpIndex));
+                    formatExpIndex++;
                     ArrayList<Value> args = new ArrayList<>();
                     args.add(arg);
                     CallInst callInst = new CallInst(null, putintFunc, args);
                     // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(callInst);
-                    // 移动下标
-                    i++;    // 跳过"%d"
-                    formatExpIndex++;
-                } else {
-                    // 创建call指令
-                    Function putchFunc = (Function) irSymbolManager.findSymbol("putch").getSymbol();
-                    Value arg = new Value(IntegerType.i32, String.valueOf(Integer.valueOf(formatString.charAt(i))));    //char -> int(ascii) -> string
+                } else {    //如果是非%d，在i8Constant类型C的全局常量数组中存储其ascii码
+                    s = s.concat("\0"); // 在后面补充\0  // 对于printf中的格式字符串，符号表中name为结尾为\0的字符串（保证了不会与ident冲突）。symbol是globalArray。
+                    GlobalArray globalArray;
+                    if (irSymbolManager.findSymbol(s) != null) {    // 如果符号表中已存在该字符串，则不创建数组
+                        globalArray = (GlobalArray) irSymbolManager.findSymbol(s).getSymbol();
+                    } else {    // 如果符号表中不存在，则创建数组
+                        ArrayList<Integer> dims = new ArrayList<>();
+                        dims.add(s.length());
+                        // 创建元素为i8类型的全局常量数组
+                        ArrayList<Constant> constants = new ArrayList<>();
+                        for (int i = 0; i < s.length(); i++) {
+                            int ascii = s.charAt(i);
+                            constants.add(new Constant(IntegerType.i8, ascii));
+                        }
+                        ArrayInitValue arrayInitValue = new ArrayInitValue(IntegerType.i8, constants);
+                        globalArray = new GlobalArray(irBuilder.genStrArrName(), dims, s.length(), arrayInitValue, true);   // 但是在globalArray的name为“.str编号”（前面的.保证了不会和ident重名）。不用字符串内容是因为\n\0的输出不合适。
+                        // 添加到模块
+                        irBuilder.addGlobalArray(globalArray);
+                        // 添加到符号表
+                        irSymbolManager.addSymbol(s, new IRSymbol(globalArray, arrayInitValue));
+                    }
+                    // 创建GEP指令
+                    GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i8), irBuilder.genLocalVarName(), globalArray, new Constant(IntegerType.i32, 0));
+                    // 添加指令到当前基本块
+                    irBuilder.addInstToCurBasicBlock(gepInst);
+                    // 创建call指令，调用putstr(i8*)
+                    Function putstrFunc = (Function) irSymbolManager.findSymbol("putstr").getSymbol();
                     ArrayList<Value> args = new ArrayList<>();
-                    args.add(arg);
-                    CallInst callInst = new CallInst(null, putchFunc, args);
+                    args.add(gepInst);
+                    CallInst callInst = new CallInst(null, putstrFunc, args);
                     // 添加指令到当前基本块
                     irBuilder.addInstToCurBasicBlock(callInst);
                 }
@@ -544,13 +750,22 @@ public class IRGenerator {
             if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组元素
                 // 解析表达式
                 Value expValue = visitExpNode(stmtNode.getExpNode());
-                // 创建store指令
+                // 定位左值
                 String ident = stmtNode.getlValNode().getIdent().getValue();
-                StoreInst storeInst = new StoreInst(expValue, irSymbolManager.findSymbol(ident).getSymbol());
+                Value symbol = irSymbolManager.findSymbol(ident).getSymbol();
+                // 创建store指令
+                StoreInst storeInst = new StoreInst(expValue, symbol);
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(storeInst);
             } else {    // 如果左边是数组元素
-                // todo
+                // 解析表达式
+                Value expValue = visitExpNode(stmtNode.getExpNode());
+                // 定位左值
+                Value pointer = visitLValNodeForLArr(stmtNode.getlValNode());
+                // 创建store指令
+                StoreInst storeInst = new StoreInst(expValue, pointer);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(storeInst);
             }
         } else if (stmtNode.getlValNode() != null && stmtNode.getGetintToken() != null) {   // LVal '=' 'getint''('')'';'
             if (stmtNode.getlValNode().getExpNodes().isEmpty()) {   // 如果左边不是数组元素
@@ -559,16 +774,28 @@ public class IRGenerator {
                 CallInst callInst = new CallInst(irBuilder.genLocalVarName(), getintFunc, new ArrayList<>());
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(callInst);
-                // 创建store指令
+                // 定位左值
                 String ident = stmtNode.getlValNode().getIdent().getValue();
-                StoreInst storeInst = new StoreInst(callInst, irSymbolManager.findSymbol(ident).getSymbol());
+                Value symbol = irSymbolManager.findSymbol(ident).getSymbol();
+                // 创建store指令
+                StoreInst storeInst = new StoreInst(callInst, symbol);
                 // 添加指令到当前基本块
                 irBuilder.addInstToCurBasicBlock(storeInst);
             } else {    // 如果左边是数组元素
-                // todo
+                // 创建call指令
+                Function getintFunc = (Function) irSymbolManager.findSymbol("getint").getSymbol();
+                CallInst callInst = new CallInst(irBuilder.genLocalVarName(), getintFunc, new ArrayList<>());
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(callInst);
+                // 定位左值
+                Value pointer = visitLValNodeForLArr(stmtNode.getlValNode());
+                // 创建store指令
+                StoreInst storeInst = new StoreInst(callInst, pointer);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(storeInst);
             }
         } else if (stmtNode.getExpNode() != null) { // Exp ';'  //即 [Exp] ';'有 Exp 的情况
-            visitExpNode(stmtNode.getExpNode());
+            visitExpNode(stmtNode.getExpNode());    // todo 是否可以不解析
         } else if (stmtNode.getSemicn() != null) {  // ';'      //即 [Exp] ';'无 Exp 的情况
             // 什么都不做
         }
@@ -579,13 +806,22 @@ public class IRGenerator {
         if (forStmtNode.getlValNode().getExpNodes().isEmpty()) {    // 如果左边不是数组元素
             // 解析表达式
             Value expValue = visitExpNode(forStmtNode.getExpNode());
-            // 创建store指令
+            // 定位左值
             String ident = forStmtNode.getlValNode().getIdent().getValue();
-            StoreInst storeInst = new StoreInst(expValue, irSymbolManager.findSymbol(ident).getSymbol());
+            Value symbol = irSymbolManager.findSymbol(ident).getSymbol();
+            // 创建store指令
+            StoreInst storeInst = new StoreInst(expValue, symbol);
             // 添加指令到当前基本块
             irBuilder.addInstToCurBasicBlock(storeInst);
         } else {    // 如果左边是数组元素
-            // todo
+            // 解析表达式
+            Value expValue = visitExpNode(forStmtNode.getExpNode());
+            // 定位左值
+            Value pointer = visitLValNodeForLArr(forStmtNode.getlValNode());
+            // 创建store指令
+            StoreInst storeInst = new StoreInst(expValue, pointer);
+            // 添加指令到当前基本块
+            irBuilder.addInstToCurBasicBlock(storeInst);
         }
     }
 
@@ -600,19 +836,88 @@ public class IRGenerator {
     }
 
     // 21.左值表达式 LVal → Ident {'[' Exp ']'} //1.普通变量 2.一维数组 3.二维数组
-    private Value visitLValNode(LValNode lValNode) {
-        if (lValNode.getExpNodes().isEmpty()) { // 如果不是数组
-            String ident = lValNode.getIdent().getValue();
-            Value pointer = irSymbolManager.findSymbol(ident).getSymbol();
+
+    /***
+     * 解析lval作为右值的情况。
+     * 比如 a[0] = b[0];
+     * a[0]和b[0]同样是lval，但a[0]是左值，需要取地址(GEP)；而b[0]是右值，需要取值(load)。
+     */
+    private Value visitLValNodeForR(LValNode lValNode) {
+        String ident = lValNode.getIdent().getValue();
+        Value pointer = irSymbolManager.findSymbol(ident).getSymbol();
+        if (pointer instanceof Param ||
+                ((PointerType) pointer.getType()).getTargetType() instanceof ArrayType) { // 如果左值是数组形参，全局数组，局部数组
+            // 获取数组维数列表
+            ArrayList<Integer> dims;
+            if (pointer instanceof Param) { // 如果左值是数组形参，维数信息在Param中取得
+                dims = ((Param) pointer).getDims();
+            } else {    // 如果左值是全局数组或局部数组，维数列表在指针的目标类型（数组类型）中取得
+                ArrayType arrayType = (ArrayType) ((PointerType) pointer.getType()).getTargetType();
+                dims = arrayType.getDims();
+            }
+            // 获取左值下标列表 比如左值 a[1][2] 的下标列表为 {1, 2}
+            ArrayList<Value> indexes = new ArrayList<>();
+            for (ExpNode expNode : lValNode.getExpNodes()) {
+                indexes.add(visitExpNode(expNode));
+            }
+            // 计算偏移量
+            Value offset = irBuilder.calOffset(indexes, dims);
+            // 解析左值
+            if (dims.size() == indexes.size()) {    // 如果下标数量等于维度数量，则返回值，即先gep再load
+                // 创建GEP指令
+                GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i32), irBuilder.genLocalVarName(), pointer, offset);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(gepInst);
+                // 创建load指令
+                LoadInst loadInst = new LoadInst(irBuilder.genLocalVarName(), gepInst);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(loadInst);
+                return loadInst;
+            } else {    // 如果下标数量小于维度数量，则返回指针，即只gep
+                // 创建GEP指令
+                GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i32), irBuilder.genLocalVarName(), pointer, offset);
+                // 添加指令到当前基本块
+                irBuilder.addInstToCurBasicBlock(gepInst);
+                return gepInst;
+            }
+        } else {    // 如果左值是非数组
             // 创建指令
             LoadInst loadInst = new LoadInst(irBuilder.genLocalVarName(), pointer);
             // 添加指令到基本块
             irBuilder.addInstToCurBasicBlock(loadInst);
             return loadInst;
-        } else {    // 如果是数组
-            // todo
-            return null;
         }
+    }
+
+    /***
+     * 解析lval作为左值，且是数组元素的情况。此时的lval一定定位到元素，即dims.size() == values.size()。
+     * 比如 a[0] = b[0];
+     * a[0]和b[0]同样是lval，但a[0]是左值，需要取地址(GEP)；而b[0]是右值，需要取值(load)。
+     */
+    private Value visitLValNodeForLArr(LValNode lValNode) {
+        String ident = lValNode.getIdent().getValue();
+        Value pointer = irSymbolManager.findSymbol(ident).getSymbol();
+        // 获取数组维数列表
+        ArrayList<Integer> dims;
+        if (pointer instanceof Param) { // 如果左值是数组形参，维数信息在Param中取得
+            dims = ((Param) pointer).getDims();
+        } else {    // 如果左值是全局数组或局部数组，维数列表在指针的目标类型（数组类型）中取得
+            ArrayType arrayType = (ArrayType) ((PointerType) pointer.getType()).getTargetType();
+            dims = arrayType.getDims();
+        }
+        // 获取左值下标列表 比如左值 a[1][2] 的下标列表为 {1, 2}
+        ArrayList<Value> indexes = new ArrayList<>();
+        for (ExpNode expNode : lValNode.getExpNodes()) {
+            indexes.add(visitExpNode(expNode));
+        }
+        // 计算偏移量
+        Value offset = irBuilder.calOffset(indexes, dims);
+        // 创建GEP指令
+        GEPInst gepInst = new GEPInst(new PointerType(IntegerType.i32), irBuilder.genLocalVarName(), pointer, offset);
+        // 添加指令到当前基本块
+        irBuilder.addInstToCurBasicBlock(gepInst);
+        // 返回数组元素i32*指针
+        return gepInst;
     }
 
     // 22.基本表达式 PrimaryExp → '(' Exp ')' | LVal | Number // 三种情况均需覆盖
@@ -620,7 +925,7 @@ public class IRGenerator {
         if (primaryExpNode.getExpNode() != null) {  // PrimaryExp → '(' Exp ')'
             return visitExpNode(primaryExpNode.getExpNode());
         } else if (primaryExpNode.getlValNode() != null) {  // PrimaryExp → LVal
-            return visitLValNode(primaryExpNode.getlValNode());
+            return visitLValNodeForR(primaryExpNode.getlValNode());
         } else {    // PrimaryExp → Number
             return visitNumberNode(primaryExpNode.getNumberNode());
         }
@@ -991,4 +1296,12 @@ public class IRGenerator {
     }
 
     // 33.常量表达式 ConstExp → AddExp 注：使用的Ident 必须是常量 // 存在即可
+
+    /***
+     * 计算常量表达式的值。
+     * @return 常量表达式的值。
+     */
+    int visitConstExpNode(ConstExpNode constExpNode) {
+        return constExpNode.getAddExpNode().calVal();
+    }
 }

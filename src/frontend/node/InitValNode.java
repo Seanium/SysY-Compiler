@@ -27,6 +27,10 @@ public class InitValNode extends Node {
         this.rightBrace = null;
     }
 
+    public ArrayList<InitValNode> getInitValNodes() {
+        return initValNodes;
+    }
+
     // 9.变量初值 InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'// 1.表达式初值 2.一维数组初值 3.二维数组初值
     // FIRST(InitVal) = FIRST(Exp) + {‘{’} = {‘(’,Ident,Number,'+','−','!', ‘{’}
     @Override

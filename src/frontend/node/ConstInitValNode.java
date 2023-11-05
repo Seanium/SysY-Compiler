@@ -27,6 +27,10 @@ public class ConstInitValNode extends Node {
         this.rightBrace = null;
     }
 
+    public ArrayList<ConstInitValNode> getConstInitValNodes() {
+        return constInitValNodes;
+    }
+
     // 6.常量初值 ConstInitVal → ConstExp
     // | '{' [ ConstInitVal { ',' ConstInitVal } ] '}' // 1.常表达式初值 2.一维数组初值 3.二维数组初值
     // FIRST(ConstInitVal) = FIRST(ConstExp) + {‘{’} = {‘(’,Ident,Number,'+','−','!', ‘{’}

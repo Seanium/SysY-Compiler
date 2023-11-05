@@ -1,9 +1,6 @@
 package frontend.node;
 
 import frontend.token.Token;
-import midend.ir.Param;
-
-import java.util.ArrayList;
 
 public class FuncDefNode extends Node {
     private final FuncTypeNode funcTypeNode;
@@ -57,15 +54,5 @@ public class FuncDefNode extends Node {
 
     public BlockNode getBlockNode() {
         return blockNode;
-    }
-
-    public ArrayList<Param> getIRParams() {
-        ArrayList<Param> params = new ArrayList<>();
-        if (funcFParamsNode != null) {
-            for (FuncFParamNode funcFParamNode : funcFParamsNode.getFuncFParamNodes()) {
-                params.add(funcFParamNode.toIRParam());
-            }
-        }
-        return params;
     }
 }

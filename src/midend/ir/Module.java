@@ -14,17 +14,24 @@ public class Module extends Value {
         return instance;
     }
 
-    private final ArrayList<GlobalVar> globalVars;
+    /***
+     * 全局声明列表，包括globalVar(非数组)和globalArray(数组)。
+     */
+    private final ArrayList<Value> globals;
     private final ArrayList<Function> functions;
 
     private Module() {
         super(OtherType.module, "module");
-        this.globalVars = new ArrayList<>();
+        this.globals = new ArrayList<>();
         this.functions = new ArrayList<>();
     }
 
     public void addGlobalVar(GlobalVar globalVar) {
-        globalVars.add(globalVar);
+        globals.add(globalVar);
+    }
+
+    public void addGlobalArray(GlobalArray globalArray) {
+        globals.add(globalArray);
     }
 
     public void addFunction(Function function) {
@@ -48,15 +55,19 @@ public class Module extends Value {
         for (Function function : declFuncs) {
             sb.append(function.toString()).append("\n");
         }
-        sb.append("\n");
-        // 全局变量定义
-        for (GlobalVar globalVar : globalVars) {
-            sb.append(globalVar.toString()).append("\n");
+        if (!declFuncs.isEmpty()) {
+            sb.append("\n");
         }
-        sb.append("\n");
+        // 全局变量定义
+        for (Value global : globals) {
+            sb.append(global.toString()).append("\n");
+        }
+        if (!globals.isEmpty()) {
+            sb.append("\n");
+        }
         // 函数定义
         for (Function function : defFuncs) {
-            sb.append(function.toString()).append("\n");
+            sb.append(function.toString()).append("\n\n");
         }
 
         return sb.toString();

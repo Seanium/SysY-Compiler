@@ -29,6 +29,7 @@ public class Compiler {
 
     public static void main(String[] args) {
         // 词法分析
+//        String source = readFile(args[0]);  // 从命令行参数获取源文件名
         String source = readFile("testfile.txt");
         Lexer lexer = Lexer.getInstance(source);
         //输出

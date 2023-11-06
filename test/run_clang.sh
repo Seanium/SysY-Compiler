@@ -6,3 +6,4 @@ clang -x c -emit-llvm -S testfile_clang.txt -o llvm_ir_clang.txt
 # 链接 llvm_ir_clang.txt 与 libsysy.ll 并运行
 llvm-link llvm_ir_clang.txt libsysy/libsysy.ll -o out_clang.ll
 lli out_clang.ll
+rm -f out_clang.ll

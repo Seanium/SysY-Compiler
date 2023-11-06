@@ -293,6 +293,53 @@ public class IRBuilder {
     }
 
     /***
+     * 计算数组元素左值的偏移量。用于常量初值的编译时计算，不创建指令，直接返回int。
+     * @param indexes   左值下标列表。
+     * @param dims  数组维度列表。
+     */
+    public int calOffsetForCalVal(ArrayList<Integer> indexes, ArrayList<Integer> dims) {
+        // 转换数组维数列表 到 数组维数乘积列表
+        // 方法是，丢弃第一维，其余位置是与后面所有维度的成绩，最后补1
+        // 比如 {1, 3, 2, 4} 转化为 {3*2*4, 2*4, 4, 1} = {24, 8, 4, 1}
+        // 比如 {1} 转化为 {1}
+        // 转换之后得到的dimsProd列表，只需与左值下标列表做点乘，即得到偏移量
+        ArrayList<Integer> dimsProd = new ArrayList<>();
+        int curProd = 1;    // 暂存目前的乘积
+        for (int i = dims.size() - 1; i >= 1; i--) {    // 倒序遍历
+            curProd *= dims.get(i);
+            dimsProd.add(0, curProd);   // 插入到头
+        }
+        dimsProd.add(1);
+
+        // 计算偏移量
+        // 比如数组声明为 int a[][3][2][4], disProd列表为 {24, 8, 4, 1}
+        // 若左值为 a[exp0][exp1][exp2][exp3] // 这里的exp其实都是int
+        // 则偏移量为 exp0*24 + exp1*8 + exp2*4 + exp3*1
+        // 若左值为 a
+        // 则偏移量为 0
+        int offset = 0;    // 将偏移量初始化为0，以适应下标列表为空的情况
+        for (int i = 0; i < indexes.size(); i++) {
+            int ithIndex = indexes.get(i);    // 第i个下标
+            int ithDimProd = dimsProd.get(i);   // 第i个维数乘积
+            if (offset == 0) {   // 如果当前偏移为0(包括第一次进入循环的情况)，只乘不加
+                if (ithDimProd == 1) {   // 如果维数为1，不用乘
+                    offset = ithIndex;
+                } else {    // 如果维数大于1，要乘
+                    offset = ithDimProd * ithIndex;
+                }
+            } else {    // 如果是后续循环，乘完当前结果，再加上之前的偏移量
+                if (ithDimProd == 1) {   // 如果维数为1，不用乘，只需加
+                    offset = offset + ithIndex;
+                } else {    // 如果维数大于1，要乘和加
+                    int mul = ithDimProd * ithIndex;
+                    offset = offset + mul;
+                }
+            }
+        }
+        return offset;
+    }
+
+    /***
      * // 如果是void函数且最后没有return;，则补充return;
      * @param func 要检查的函数。
      */

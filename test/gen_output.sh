@@ -1,8 +1,8 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/C/"
-myoutput_dir="myoutput/C/"
-file_num=18
+example_dir="2023代码生成辅助库/A/"
+myoutput_dir="myoutput/A/"
+file_num=15
 
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
 
@@ -21,6 +21,7 @@ do
   # 链接 llvm_ir.txt 与 libsysy.ll 并运行
   llvm-link "$ir_file" libsysy/libsysy.ll -o out.ll
   lli out.ll < "$input_file" > "$myoutput_file"
+  rm -f out.ll
 
   # 比较输出差异(去除行尾cr后比较）
   diff_output=$(diff --strip-trailing-cr "$myoutput_file" "$output_file")

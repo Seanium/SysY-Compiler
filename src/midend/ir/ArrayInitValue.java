@@ -51,6 +51,14 @@ public class ArrayInitValue extends Value {
         return constants;
     }
 
+    /***
+     * 获取第offset个元素的初值(int类型)。
+     * @param offset 偏移量。
+     */
+    public int getIntByOffset(int offset) {
+        return constants.get(offset).getValue();
+    }
+
     @Override
     public String toString() {
         if (type == IntegerType.i8) {   // 如果是格式字符串

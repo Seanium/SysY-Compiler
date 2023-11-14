@@ -10,4 +10,8 @@ public class Inst extends User {
         super(type, name);
         this.opcode = opcode;
     }
+
+    public Opcode getOpcode() {
+        return opcode;
+    }
 }

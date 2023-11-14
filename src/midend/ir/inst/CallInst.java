@@ -26,6 +26,14 @@ public class CallInst extends Inst {
         }
     }
 
+    public Function getTargetFunc() {
+        return targetFunc;
+    }
+
+    public ArrayList<Value> getArgs() {
+        return args;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

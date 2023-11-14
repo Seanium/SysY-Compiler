@@ -25,6 +25,14 @@ public class GEPInst extends Inst {
         addOperand(offset);
     }
 
+    public Value getBasePointer() {
+        return basePointer;
+    }
+
+    public Value getOffset() {
+        return offset;
+    }
+
     @Override
     public String toString() {
         if (((PointerType) basePointer.getType()).getTargetType() instanceof ArrayType) {    // 如果是基指针是数组指针（全局数组、局部数组取元素）

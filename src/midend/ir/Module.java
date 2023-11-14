@@ -38,6 +38,14 @@ public class Module extends Value {
         functions.add(function);
     }
 
+    public ArrayList<Value> getGlobals() {
+        return globals;
+    }
+
+    public ArrayList<Function> getFunctions() {
+        return functions;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

@@ -33,6 +33,10 @@ public class ArrayType extends Type {
         return eleType;
     }
 
+    public int getLen() {
+        return len;
+    }
+
     @Override
     public String toString() {
         return "[" + len + " x " + eleType + "]";

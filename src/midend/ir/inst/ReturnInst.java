@@ -20,6 +20,10 @@ public class ReturnInst extends Inst {
         }
     }
 
+    public Value getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

@@ -20,6 +20,10 @@ public class ZextInst extends Inst {
         addOperand(oriValue);
     }
 
+    public Value getOriValue() {
+        return oriValue;
+    }
+
     @Override
     public String toString() {
         return name + " = zext " + oriValue.getType() + " " + oriValue.getName() + " to " + targetType;

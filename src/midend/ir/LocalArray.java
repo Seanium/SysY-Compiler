@@ -26,6 +26,10 @@ public class LocalArray extends Value {
         this.isConst = isConst;
     }
 
+    public int getLen() {
+        return len;
+    }
+
     /***
      * 设置局部数组的右值名。
      * @param name 右值名为：数组的alloc语句中，赋值号左侧的寄存器名。

@@ -40,6 +40,22 @@ public class GlobalArray extends Value {
         this.isConst = isConst;
     }
 
+    public boolean checkAllZero() {
+        return arrayInitValue.checkAllZero();
+    }
+
+    public int getLen() {
+        return len;
+    }
+
+    public ArrayInitValue getArrayInitValue() {
+        return arrayInitValue;
+    }
+
+    public ArrayType getArrayType() {
+        return arrayType;
+    }
+
     @Override
     public String toString() {
         if (isConst) {  // 全局数组常量
@@ -47,5 +63,16 @@ public class GlobalArray extends Value {
         } else {    // 全局数组变量
             return name + " = dso_local global " + arrayType + " " + arrayInitValue;
         }
+    }
+
+    /***
+     * 转换为AsciizData构造函数所需字符串。
+     */
+    public String toAsciizDataContent() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arrayInitValue.getConstants().size() - 1; i++) {
+            sb.append((char) arrayInitValue.getConstants().get(i).getValue());
+        }
+        return sb.toString();
     }
 }

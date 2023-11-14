@@ -18,6 +18,10 @@ public class LoadInst extends Inst {
         this.pointer = pointer;
     }
 
+    public Value getPointer() {
+        return pointer;
+    }
+
     @Override
     public String toString() {
         return name + " = load " + type + ", " + pointer.getType() + " " + pointer.getName();

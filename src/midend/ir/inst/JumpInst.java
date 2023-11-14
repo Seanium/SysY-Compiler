@@ -16,6 +16,10 @@ public class JumpInst extends Inst {
         addOperand(targetBasicBlock);   // todo 是否需要此operand
     }
 
+    public BasicBlock getTargetBasicBlock() {
+        return targetBasicBlock;
+    }
+
     @Override
     public String toString() {
         return "br label %" + targetBasicBlock.getName();

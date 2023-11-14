@@ -38,7 +38,7 @@ public class ArrayInitValue extends Value {
     /***
      * 检查初值列表是否全为0。
      */
-    private boolean checkAllZero() {
+    public boolean checkAllZero() {
         for (Constant constant : constants) {
             if (constant.getValue() != 0) {
                 return false;

@@ -6,7 +6,6 @@ import java.util.ArrayList;
 
 public class Function extends Value {
 
-
     private final ArrayList<Param> params;    // 没有形参则为无元素
     private final ArrayList<BasicBlock> basicBlocks;
     private boolean isLib;  // 是否为库函数
@@ -47,6 +46,10 @@ public class Function extends Value {
 
     public ArrayList<BasicBlock> getBasicBlocks() {
         return basicBlocks;
+    }
+
+    public ArrayList<Param> getParams() {
+        return params;
     }
 
     @Override

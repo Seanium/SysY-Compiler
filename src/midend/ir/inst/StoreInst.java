@@ -20,6 +20,14 @@ public class StoreInst extends Inst {
         addOperand(to);
     }
 
+    public Value getFrom() {
+        return from;
+    }
+
+    public Value getTo() {
+        return to;
+    }
+
     @Override
     public String toString() {
         return "store " + from.getType() + " " + from.getName() + ", " + to.getType() + " " + to.getName();

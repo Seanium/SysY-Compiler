@@ -16,6 +16,10 @@ public class AllocaInst extends Inst {
         this.targetType = targetType;
     }
 
+    public Type getTargetType() {
+        return targetType;
+    }
+
     @Override
     public String toString() {
         return name + " = alloca " + targetType;

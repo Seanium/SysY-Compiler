@@ -16,6 +16,14 @@ public class BinaryInst extends Inst {
         addOperand(operand2);
     }
 
+    public Value getOperand1() {
+        return operand1;
+    }
+
+    public Value getOperand2() {
+        return operand2;
+    }
+
     @Override
     public String toString() {
         return name + " = " + opcode + " i32 " + operand1.getName() + ", " + operand2.getName();

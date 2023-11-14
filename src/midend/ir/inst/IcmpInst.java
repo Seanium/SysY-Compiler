@@ -25,6 +25,18 @@ public class IcmpInst extends Inst {
         addOperand(operand2);
     }
 
+    public IcmpKind getIcmpKind() {
+        return icmpKind;
+    }
+
+    public Value getOperand1() {
+        return operand1;
+    }
+
+    public Value getOperand2() {
+        return operand2;
+    }
+
     @Override
     public String toString() {
         return name + " = icmp " + icmpKind.toString() + " " +

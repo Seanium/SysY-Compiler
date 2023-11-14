@@ -81,15 +81,6 @@ public class Parser {
             if (lexer.getType() == TokenType.SEMICN) {
                 Token semicn = lexer.getCurToken();
                 lexer.next();
-                // 将常量声明加入符号表
-                if (!constDefNodes.isEmpty()) {
-                    for (ConstDefNode constDefNode : constDefNodes) {
-                        // 错误类型b【名字重定义】
-                        if (!symbolTables.addSymbol(constDefNode.toArraySymbol())) {
-                            errorList.addError(new Error(ErrorType.b, constDefNode.getIdent().getLineNum()));
-                        }
-                    }
-                }
                 return new ConstDeclNode(constToken, bTypeNode, constDefNodes, commas, semicn);
             } else {
                 // 错误类型i【缺少分号】
@@ -137,7 +128,13 @@ public class Parser {
                 Token assign = lexer.getCurToken();
                 lexer.next();
                 ConstInitValNode constInitValNode = parseConstInitVal();
-                return new ConstDefNode(ident, leftBrackets, constExpNodes, rightBrackets, assign, constInitValNode);
+                ConstDefNode constDefNode = new ConstDefNode(ident, leftBrackets, constExpNodes, rightBrackets, assign, constInitValNode);
+                // 将常量声明加入符号表
+                // 错误类型b【名字重定义】
+                if (!symbolTables.addSymbol(constDefNode.toArraySymbol())) {
+                    errorList.addError(new Error(ErrorType.b, constDefNode.getIdent().getLineNum()));
+                }
+                return constDefNode;
             } else {
                 return null;
             }
@@ -191,15 +188,6 @@ public class Parser {
         if (lexer.getType() == TokenType.SEMICN) {
             Token semicn = lexer.getCurToken();
             lexer.next();
-            // 将变量声明加入符号表
-            if (!varDefNodes.isEmpty()) {
-                for (VarDefNode varDefNode : varDefNodes) {
-                    // 错误类型b【名字重定义】
-                    if (!symbolTables.addSymbol(varDefNode.toArraySymbol())) {
-                        errorList.addError(new Error(ErrorType.b, varDefNode.getIdent().getLineNum()));
-                    }
-                }
-            }
             return new VarDeclNode(bTypeNode, varDefNodes, commas, semicn);
         } else {
             // 错误类型i【缺少分号】
@@ -230,14 +218,21 @@ public class Parser {
                     rightBrackets.add(new Token(TokenType.RBRACK, "]", lexer.getLastToken().getLineNum()));
                 }
             }
+            VarDefNode varDefNode;
             if (lexer.getType() == TokenType.ASSIGN) {
                 Token assign = lexer.getCurToken();
                 lexer.next();
                 InitValNode initValNode = parseInitVal();
-                return new VarDefNode(ident, leftBrackets, constExpNodes, rightBrackets, assign, initValNode);
+                varDefNode = new VarDefNode(ident, leftBrackets, constExpNodes, rightBrackets, assign, initValNode);
             } else {
-                return new VarDefNode(ident, leftBrackets, constExpNodes, rightBrackets);
+                varDefNode = new VarDefNode(ident, leftBrackets, constExpNodes, rightBrackets);
             }
+            // 将变量声明加入符号表
+            // 错误类型b【名字重定义】
+            if (!symbolTables.addSymbol(varDefNode.toArraySymbol())) {
+                errorList.addError(new Error(ErrorType.b, varDefNode.getIdent().getLineNum()));
+            }
+            return varDefNode;
         } else {
             return null;
         }

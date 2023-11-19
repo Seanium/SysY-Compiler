@@ -23,6 +23,16 @@ public class BasicBlock extends Value {
         return instructions;
     }
 
+    /***
+     * 返回基本块的最后一条指令。若基本块内无指令，返回null。
+     */
+    public Inst getLastInst() {
+        if (instructions.isEmpty()) {
+            return null;
+        }
+        return instructions.get(instructions.size() - 1);
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

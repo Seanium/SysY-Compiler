@@ -5,6 +5,7 @@ import frontend.Parser;
 import frontend.error.ErrorList;
 import frontend.node.CompUnitNode;
 import midend.IRGenerator;
+import midend.IROptimizer;
 import midend.ir.Module;
 
 import java.io.IOException;
@@ -61,9 +62,14 @@ public class Compiler {
 //        输出
         Module module = Module.getInstance();
 //        System.out.println(module);
+        writeFile("llvm_ir_raw.txt", module.toString());
+
+//        5.中间代码优化
+        IROptimizer irOptimizer = IROptimizer.getInstance();
+        irOptimizer.runPasses();
         writeFile("llvm_ir.txt", module.toString());
 
-//        5.目标代码生成 (MIPS)
+//        6.目标代码生成 (MIPS)
         MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
         mipsGenerator.visitModule(Module.getInstance());
 //        输出

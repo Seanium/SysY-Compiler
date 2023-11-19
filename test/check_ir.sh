@@ -12,7 +12,7 @@ do
   input_file="${example_dir}input${i}.txt"
   output_file="${example_dir}output${i}.txt"
   my_ir_file="${my_ir_output_dir}my_ir${i}.txt"
-  my_ir_output_file="${my_ir_output_dir}my_output${i}.txt"
+  my_ir_output_file="${my_ir_output_dir}my_ir${i}_output.txt"
 
   echo "testing $test_file"
 

@@ -348,9 +348,9 @@ public class IRBuilder {
         // 如果是void函数
         if (func.getType() == VoidType.voidType) {
             BasicBlock lastBasicBlock = func.getBasicBlocks().get(func.getBasicBlocks().size() - 1);
-            // 如果最后一个基本块没有指令，或者最后一条指令不是return
-            if (lastBasicBlock.getInstructions().isEmpty() ||
-                    !(lastBasicBlock.getInstructions().get(lastBasicBlock.getInstructions().size() - 1) instanceof ReturnInst)) {
+            // 如果最后一个基本块没有指令，或者最后一条指令不是return // 此处利用了短路求值
+            if (lastBasicBlock.getLastInst() == null ||
+                    !(lastBasicBlock.getLastInst() instanceof ReturnInst)) {
                 // 则补充return;
                 ReturnInst returnInst = new ReturnInst(null);
                 addInstToBasicBlock(returnInst, lastBasicBlock);

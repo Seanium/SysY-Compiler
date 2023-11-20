@@ -1,6 +1,6 @@
 package midend;
 
-import midend.pass.BuildCFGPass;
+import midend.pass.BuildDFPass;
 import midend.pass.Pass;
 import midend.pass.SimplifyBasicBlockPass;
 
@@ -21,7 +21,7 @@ public class IROptimizer {
     private IROptimizer() {
         this.passes = new ArrayList<>();
         addPass(new SimplifyBasicBlockPass());
-        addPass(new BuildCFGPass());
+        addPass(new BuildDFPass());
     }
 
     private void addPass(Pass pass) {

@@ -8,11 +8,56 @@ import java.util.ArrayList;
 public class BasicBlock extends Value {
     private final Function parentFunction;
     private final ArrayList<Inst> instructions;
+    /***
+     * CFG中，该基本块的前驱基本块列表。
+     */
+    private final ArrayList<BasicBlock> cfgPreList;
+    /***
+     * CFG中，该基本块的后继基本块列表。
+     */
+    private final ArrayList<BasicBlock> cfgSucList;
+    /***
+     * 该基本块支配的基本块列表。即该基本块的支配下级。
+     */
+    private final ArrayList<BasicBlock> domList;
+    /***
+     * 支配该基本块的基本块列表。即该基本块的支配上级。
+     */
+    private final ArrayList<BasicBlock> domByList;
+    /***
+     * 该基本块严格支配的基本块列表。即该基本块的严格支配下级。
+     */
+    private final ArrayList<BasicBlock> strictDomList;
+    /***
+     * 严格支配该基本块的基本块列表。即该基本块的严格支配上级。
+     */
+    private final ArrayList<BasicBlock> strictDomByList;
+    /***
+     * 该基本块直接支配的基本块。即该基本块的直接支配下级。
+     */
+    private BasicBlock immDom;
+    /***
+     * 直接支配该基本块的基本块。即该基本块的直接支配上级。
+     */
+    private BasicBlock immDomBy;
+    /***
+     * 该基本块的严格支配边界。
+     */
+    private final ArrayList<BasicBlock> dfList;
 
     public BasicBlock(String name, Function parentFunction) {
         super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
         this.parentFunction = parentFunction;
         this.instructions = new ArrayList<>();
+        this.cfgPreList = new ArrayList<>();
+        this.cfgSucList = new ArrayList<>();
+        this.domList = new ArrayList<>();
+        this.domByList = new ArrayList<>();
+        this.strictDomList = new ArrayList<>();
+        this.strictDomByList = new ArrayList<>();
+        this.immDom = null;
+        this.immDomBy = null;
+        this.dfList = new ArrayList<>();
     }
 
     public void addInst(Inst inst) {
@@ -31,6 +76,50 @@ public class BasicBlock extends Value {
             return null;
         }
         return instructions.get(instructions.size() - 1);
+    }
+
+    public ArrayList<BasicBlock> getCFGPreList() {
+        return cfgPreList;
+    }
+
+    public ArrayList<BasicBlock> getCFGSucList() {
+        return cfgSucList;
+    }
+
+    public ArrayList<BasicBlock> getStrictDomByList() {
+        return strictDomByList;
+    }
+
+    public ArrayList<BasicBlock> getStrictDomList() {
+        return strictDomList;
+    }
+
+    public BasicBlock getImmDomBy() {
+        return immDomBy;
+    }
+
+    public ArrayList<BasicBlock> getDFList() {
+        return dfList;
+    }
+
+    public BasicBlock getImmDom() {
+        return immDom;
+    }
+
+    public void setImmDom(BasicBlock immDom) {
+        this.immDom = immDom;
+    }
+
+    public void setImmDomBy(BasicBlock immDomBy) {
+        this.immDomBy = immDomBy;
+    }
+
+    public ArrayList<BasicBlock> getDomList() {
+        return domList;
+    }
+
+    public ArrayList<BasicBlock> getDomByList() {
+        return domByList;
     }
 
     @Override

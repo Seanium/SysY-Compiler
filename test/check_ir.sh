@@ -17,7 +17,8 @@ do
   echo "testing $test_file"
 
   # 生成中间代码
-  java -jar "$jar_file" "$test_file"
+  cp "$test_file" testfile.txt
+  java -jar "$jar_file"
   cp llvm_ir.txt "$my_ir_file"
   # 链接 llvm_ir.txt 与 libsysy.ll 并运行
   llvm-link "$my_ir_file" libsysy/libsysy.ll -o out.ll

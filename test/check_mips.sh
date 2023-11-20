@@ -19,7 +19,8 @@ do
   echo "testing $test_file"
 
   # 生成mips代码
-  java -jar "$jar_file" "$test_file"
+  cp "$test_file" testfile.txt
+  java -jar "$jar_file"
   cp mips.txt "$my_mips_file"
   # mars执行mips代码，获取输出
   java -jar "$mars_file" "$my_mips_file" < "$input_file" > "$my_mips_output_file"

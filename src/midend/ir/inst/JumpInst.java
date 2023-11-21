@@ -4,7 +4,6 @@ import midend.ir.BasicBlock;
 import midend.ir.type.VoidType;
 
 public class JumpInst extends Inst {
-    private final BasicBlock targetBasicBlock;
 
     /***
      * 无条件跳转指令。
@@ -12,16 +11,16 @@ public class JumpInst extends Inst {
      */
     public JumpInst(BasicBlock targetBasicBlock) {
         super(VoidType.voidType, "", Opcode.jump);
-        this.targetBasicBlock = targetBasicBlock;
-        addOperand(targetBasicBlock);   // todo 是否需要此operand
+        addOperand(targetBasicBlock);
     }
 
     public BasicBlock getTargetBasicBlock() {
-        return targetBasicBlock;
+        return (BasicBlock) operandList.get(0);
     }
 
     @Override
     public String toString() {
+        BasicBlock targetBasicBlock = getTargetBasicBlock();
         return "br label %" + targetBasicBlock.getName();
     }
 }

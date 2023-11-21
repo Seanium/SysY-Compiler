@@ -69,14 +69,14 @@ public class IRBuilder {
      * 添加指令到当前基本块。
      */
     public void addInstToCurBasicBlock(Inst inst) {
-        getCurBasicBlock().addInst(inst);
+        getCurBasicBlock().addInstAtLast(inst);
     }
 
     /***
      * 添加指令到指定基本块。
      */
     private void addInstToBasicBlock(Inst inst, BasicBlock basicBlock) {
-        basicBlock.addInst(inst);
+        basicBlock.addInstAtLast(inst);
     }
 
     // 获取当前函数
@@ -115,12 +115,18 @@ public class IRBuilder {
     }
 
     /***
-     * 生成当前函数的局部变量名
+     * 生成当前函数的局部变量名。
      */
     public String genLocalVarName() {
         return "%v" + genRegIndex(getCurFunction());
     }
 
+    /***
+     * 生成指定函数的局部变量名。
+     */
+    public String genLocalVarNameForFunc(Function function){
+        return "%v" + genRegIndex(function);
+    }
     /***
      * 生成全局字符串常量数组名。
      */

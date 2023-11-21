@@ -21,5 +21,5 @@ public enum Opcode {
 
 
     // Other Operations
-    call, icmp
+    call, icmp, phi
 }

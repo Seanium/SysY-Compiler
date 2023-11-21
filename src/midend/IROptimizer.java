@@ -1,6 +1,7 @@
 package midend;
 
 import midend.pass.BuildDFPass;
+import midend.pass.Mem2RegPass;
 import midend.pass.Pass;
 import midend.pass.SimplifyBasicBlockPass;
 
@@ -22,6 +23,7 @@ public class IROptimizer {
         this.passes = new ArrayList<>();
         addPass(new SimplifyBasicBlockPass());
         addPass(new BuildDFPass());
+        addPass(new Mem2RegPass());
     }
 
     private void addPass(Pass pass) {

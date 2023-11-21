@@ -8,4 +8,12 @@ public class Use {
         this.user = user;
         this.value = value;
     }
+
+    public User getUser() {
+        return user;
+    }
+
+    public Value getValue() {
+        return value;
+    }
 }

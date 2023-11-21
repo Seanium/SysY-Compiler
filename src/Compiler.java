@@ -1,5 +1,3 @@
-import backend.MIPSGenerator;
-import backend.mips.MIPSFile;
 import frontend.Lexer;
 import frontend.Parser;
 import frontend.error.ErrorList;
@@ -69,12 +67,12 @@ public class Compiler {
         irOptimizer.runPasses();
         writeFile("llvm_ir.txt", module.toString());
 
-//        6.目标代码生成 (MIPS)
-        MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
-        mipsGenerator.visitModule(Module.getInstance());
-//        输出
-        MIPSFile mipsFile = MIPSFile.getInstance();
-//        System.out.println(mipsFile);
-        writeFile("mips.txt", mipsFile.toString());
+////        6.目标代码生成 (MIPS)
+//        MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
+//        mipsGenerator.visitModule(Module.getInstance());
+////        输出
+//        MIPSFile mipsFile = MIPSFile.getInstance();
+////        System.out.println(mipsFile);
+//        writeFile("mips.txt", mipsFile.toString());
     }
 }

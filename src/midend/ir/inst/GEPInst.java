@@ -6,8 +6,6 @@ import midend.ir.type.PointerType;
 import midend.ir.type.Type;
 
 public class GEPInst extends Inst {
-    private final Value basePointer;
-    private final Value offset;
 
     /***
      * GetElementPtr指令。
@@ -19,22 +17,22 @@ public class GEPInst extends Inst {
      */
     public GEPInst(Type type, String name, Value basePointer, Value offset) {
         super(type, name, Opcode.gep);
-        this.basePointer = basePointer;
-        this.offset = offset;
         addOperand(basePointer);
         addOperand(offset);
     }
 
     public Value getBasePointer() {
-        return basePointer;
+        return operandList.get(0);
     }
 
     public Value getOffset() {
-        return offset;
+        return operandList.get(1);
     }
 
     @Override
     public String toString() {
+        Value basePointer = getBasePointer();
+        Value offset = getOffset();
         if (((PointerType) basePointer.getType()).getTargetType() instanceof ArrayType) {    // 如果是基指针是数组指针（全局数组、局部数组取元素）
             return name + " = getelementptr " +
                     ((PointerType) basePointer.getType()).getTargetType() + ", " +

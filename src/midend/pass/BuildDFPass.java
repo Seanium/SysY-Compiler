@@ -101,7 +101,7 @@ public class BuildDFPass implements Pass {
                     }
                 }
                 if (satisfied) {
-                    m.setImmDom(n);
+                    m.getImmDomList().add(n);
                     n.setImmDomBy(m);
                 }
             }

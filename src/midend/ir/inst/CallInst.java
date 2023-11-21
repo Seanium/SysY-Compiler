@@ -7,8 +7,6 @@ import midend.ir.type.IntegerType;
 import java.util.ArrayList;
 
 public class CallInst extends Inst {
-    final Function targetFunc;
-    final ArrayList<Value> args;  // 实参
 
     /***
      *
@@ -18,8 +16,6 @@ public class CallInst extends Inst {
      */
     public CallInst(String name, Function targetFunc, ArrayList<Value> args) {
         super(targetFunc.getType(), name, Opcode.call); // 右值类型是函数返回值类型
-        this.targetFunc = targetFunc;
-        this.args = args;
         addOperand(targetFunc);
         for (Value arg : args) {
             addOperand(arg);
@@ -27,15 +23,19 @@ public class CallInst extends Inst {
     }
 
     public Function getTargetFunc() {
-        return targetFunc;
+        return (Function) operandList.get(0);
     }
 
     public ArrayList<Value> getArgs() {
+        ArrayList<Value> args = new ArrayList<>(operandList);
+        args.remove(0);
         return args;
     }
 
     @Override
     public String toString() {
+        Function targetFunc = getTargetFunc();
+        ArrayList<Value> args = getArgs();
         StringBuilder sb = new StringBuilder();
         if (type == IntegerType.i32) {  // 如果调用的函数返回值为int，则将call的值存入虚拟寄存器
             sb.append(name).append(" = call i32 ");

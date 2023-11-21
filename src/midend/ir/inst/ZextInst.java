@@ -4,7 +4,6 @@ import midend.ir.Value;
 import midend.ir.type.Type;
 
 public class ZextInst extends Inst {
-    private final Value oriValue;
     private final Type targetType;
 
     /***
@@ -15,17 +14,17 @@ public class ZextInst extends Inst {
      */
     public ZextInst(String name, Value oriValue, Type targetType) {
         super(targetType, name, Opcode.zext);
-        this.oriValue = oriValue;
         this.targetType = targetType;
         addOperand(oriValue);
     }
 
     public Value getOriValue() {
-        return oriValue;
+        return operandList.get(0);
     }
 
     @Override
     public String toString() {
+        Value oriValue = getOriValue();
         return name + " = zext " + oriValue.getType() + " " + oriValue.getName() + " to " + targetType;
     }
 }

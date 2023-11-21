@@ -35,7 +35,7 @@ public class BasicBlock extends Value {
     /***
      * 该基本块直接支配的基本块。即该基本块的直接支配下级。
      */
-    private BasicBlock immDom;
+    private final ArrayList<BasicBlock> immDomList;
     /***
      * 直接支配该基本块的基本块。即该基本块的直接支配上级。
      */
@@ -55,15 +55,31 @@ public class BasicBlock extends Value {
         this.domByList = new ArrayList<>();
         this.strictDomList = new ArrayList<>();
         this.strictDomByList = new ArrayList<>();
-        this.immDom = null;
+        this.immDomList = new ArrayList<>();
         this.immDomBy = null;
         this.dfList = new ArrayList<>();
     }
 
-    public void addInst(Inst inst) {
+    /***
+     * 插入指令到指令列表尾部。
+     */
+    public void addInstAtLast(Inst inst) {
         instructions.add(inst);
+        inst.setParentBasicBlock(this);
     }
 
+    /***
+     * 插入指令到指令列表头部。
+     */
+    public void addInstAtFirst(Inst inst) {
+        instructions.add(0, inst);
+        inst.setParentBasicBlock(this);
+    }
+
+    /***
+     * 禁止通过此方法向基本块中插入指令。
+     * 如需插入，请调用IRBuilder中相关方法，或addInstAtFisrt()方法。
+     */
     public ArrayList<Inst> getInstructions() {
         return instructions;
     }
@@ -102,12 +118,8 @@ public class BasicBlock extends Value {
         return dfList;
     }
 
-    public BasicBlock getImmDom() {
-        return immDom;
-    }
-
-    public void setImmDom(BasicBlock immDom) {
-        this.immDom = immDom;
+    public ArrayList<BasicBlock> getImmDomList() {
+        return immDomList;
     }
 
     public void setImmDomBy(BasicBlock immDomBy) {

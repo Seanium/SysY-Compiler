@@ -1,8 +1,9 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/A/"
-my_mips_output_dir="my_mips_output/A/"
-file_num=15
+example_dir="2023代码生成辅助库/C/"
+my_mips_output_dir="my_mips_output/C/"
+#file_num=15 #A
+file_num=18 #B, C
 
 mars_file="mars.jar"
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
@@ -21,7 +22,7 @@ do
   # 生成mips代码
   cp "$test_file" testfile.txt
   java -jar "$jar_file"
-  cp mips.txt "$my_mips_file"
+  mv mips.txt "$my_mips_file"
   # mars执行mips代码，获取输出
   java -jar "$mars_file" "$my_mips_file" < "$input_file" > "$my_mips_output_file"
 

@@ -1,8 +1,9 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/A/"
-my_ir_output_dir="my_ir_output/A/"
-file_num=15
+example_dir="2023代码生成辅助库/C/"
+my_ir_output_dir="my_ir_output/C/"
+#file_num=15 #A
+file_num=18 #B, C
 
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
 
@@ -19,7 +20,7 @@ do
   # 生成中间代码
   cp "$test_file" testfile.txt
   java -jar "$jar_file"
-  cp llvm_ir.txt "$my_ir_file"
+  mv llvm_ir.txt "$my_ir_file"
   # 链接 llvm_ir.txt 与 libsysy.ll 并运行
   llvm-link "$my_ir_file" libsysy/libsysy.ll -o out.ll
   lli out.ll < "$input_file" > "$my_ir_output_file"

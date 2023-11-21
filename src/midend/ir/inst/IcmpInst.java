@@ -6,9 +6,6 @@ import midend.ir.type.IntegerType;
 public class IcmpInst extends Inst {
     final IcmpKind icmpKind;  // 比较类型
 
-    private final Value operand1;
-    private final Value operand2;
-
     /***
      *
      * @param name  右值寄存器名。
@@ -19,8 +16,6 @@ public class IcmpInst extends Inst {
     public IcmpInst(String name, IcmpKind icmpKind, Value operand1, Value operand2) {
         super(IntegerType.i1, name, Opcode.icmp);
         this.icmpKind = icmpKind;
-        this.operand1 = operand1;
-        this.operand2 = operand2;
         addOperand(operand1);
         addOperand(operand2);
     }
@@ -30,15 +25,17 @@ public class IcmpInst extends Inst {
     }
 
     public Value getOperand1() {
-        return operand1;
+        return operandList.get(0);
     }
 
     public Value getOperand2() {
-        return operand2;
+        return operandList.get(1);
     }
 
     @Override
     public String toString() {
+        Value operand1 = getOperand1();
+        Value operand2 = getOperand2();
         return name + " = icmp " + icmpKind.toString() + " " +
                 operand1.getType() + " " + operand1.getName() + ", " + operand2.getName();
     }

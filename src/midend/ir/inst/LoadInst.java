@@ -4,7 +4,6 @@ import midend.ir.Value;
 import midend.ir.type.PointerType;
 
 public class LoadInst extends Inst {
-    final Value pointer;
 
     /***
      *
@@ -15,15 +14,15 @@ public class LoadInst extends Inst {
         // 右值类型是访问指针解引用类型
         super(((PointerType) pointer.getType()).getTargetType(), name, Opcode.load);
         addOperand(pointer);
-        this.pointer = pointer;
     }
 
     public Value getPointer() {
-        return pointer;
+        return operandList.get(0);
     }
 
     @Override
     public String toString() {
+        Value pointer = getPointer();
         return name + " = load " + type + ", " + pointer.getType() + " " + pointer.getName();
     }
 }

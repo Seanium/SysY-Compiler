@@ -5,37 +5,34 @@ import midend.ir.Value;
 import midend.ir.type.VoidType;
 
 public class BranchInst extends Inst {
-    private final Value cond;
-    private final BasicBlock trueBlock;
-    private final BasicBlock falseBlock;
 
     /***
      * 条件跳转指令。
      */
     public BranchInst(Value cond, BasicBlock trueBlock, BasicBlock falseBlock) {
         super(VoidType.voidType, "", Opcode.branch);
-        this.cond = cond;
-        this.trueBlock = trueBlock;
-        this.falseBlock = falseBlock;
         addOperand(cond);   // todo operand是否是这些
         addOperand(trueBlock);
         addOperand(falseBlock);
     }
 
     public Value getCond() {
-        return cond;
+        return operandList.get(0);
     }
 
     public BasicBlock getTrueBlock() {
-        return trueBlock;
+        return (BasicBlock) operandList.get(1);
     }
 
     public BasicBlock getFalseBlock() {
-        return falseBlock;
+        return (BasicBlock) operandList.get(2);
     }
 
     @Override
     public String toString() {
+        Value cond = getCond();
+        BasicBlock trueBlock = getTrueBlock();
+        BasicBlock falseBlock = getFalseBlock();
         return "br i1 " + cond.getName() +
                 ", label %" + trueBlock.getName() + ", label %" + falseBlock.getName();
     }

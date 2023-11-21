@@ -1,7 +1,6 @@
 package midend.ir.inst;
 
 import midend.ir.BasicBlock;
-import midend.ir.Use;
 import midend.ir.Value;
 import midend.ir.type.IntegerType;
 
@@ -21,7 +20,7 @@ public class PhiInst extends Inst {
     public void addOption(Value value, BasicBlock pre) {
         int index = cfgPreList.indexOf(pre);
         operandList.set(index, value);
-        value.addUse(new Use(this, value));
+        value.addUser(this);
     }
 
     @Override

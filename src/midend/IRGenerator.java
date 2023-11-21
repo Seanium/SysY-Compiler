@@ -795,7 +795,7 @@ public class IRGenerator {
                 irBuilder.addInstToCurBasicBlock(storeInst);
             }
         } else if (stmtNode.getExpNode() != null) { // Exp ';'  //即 [Exp] ';'有 Exp 的情况
-            visitExpNode(stmtNode.getExpNode());    // todo 是否可以不解析
+            visitExpNode(stmtNode.getExpNode());
         } else if (stmtNode.getSemicn() != null) {  // ';'      //即 [Exp] ';'无 Exp 的情况
             // 什么都不做
         }

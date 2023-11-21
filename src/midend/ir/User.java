@@ -18,8 +18,12 @@ public class User extends Value {
     public void addOperand(Value value) {
         operandList.add(value);
         if (value != null) {
-            value.addUse(new Use(this, value));
+            value.addUser(this);
         }
+    }
+
+    public ArrayList<Value> getOperandList() {
+        return operandList;
     }
 
     /***
@@ -34,8 +38,18 @@ public class User extends Value {
             if (operand.equals(oldOperand)) {
                 operandList.set(i, newOperand);
                 oldOperand.removeUser(this);
-                newOperand.addUse(new Use(this, newOperand));
+                newOperand.addUser(this);
             }
+        }
+    }
+
+    /***
+     * 删除该user作为其operand的user的信息。
+     * 即在user的所有operand的user列表中，去除该user。
+     */
+    public void delOperandThisUser() {
+        for (Value operand : operandList) {
+            operand.userList.removeIf(this::equals);
         }
     }
 }

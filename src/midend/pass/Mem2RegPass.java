@@ -14,11 +14,11 @@ import java.util.Stack;
 public class Mem2RegPass implements Pass {
     private final Module module;
     /***
-     * 某个alloca变量的store指令列表。
+     * 某个alloca变量的store/phi指令列表。
      */
     private final ArrayList<Inst> defInstList;
     /***
-     * 某个alloca变量的load指令集合。
+     * 某个alloca变量的load/phi指令集合。
      */
     private final ArrayList<Inst> useInstList;
     /***
@@ -72,13 +72,12 @@ public class Mem2RegPass implements Pass {
         ArrayList<BasicBlock> defBasicBlocks = new ArrayList<>();
         defInstList.clear();
         useInstList.clear();
-        for (Use use : allocaInst.getUseList()) {
-            Inst user = (Inst) use.getUser();
+        for (User user : allocaInst.getUserList()) {
             if (user instanceof StoreInst storeInst) {  // store指令是某个变量的重定义点
                 defBasicBlocks.add(storeInst.getParentBasicBlock());
-                defInstList.add(user);
-            } else if (user instanceof LoadInst) {
-                useInstList.add(user);
+                defInstList.add(storeInst);
+            } else if (user instanceof LoadInst loadInst) {
+                useInstList.add(loadInst);
             }
         }
         return defBasicBlocks;
@@ -127,6 +126,7 @@ public class Mem2RegPass implements Pass {
                 iterator.remove();
             }
         }
+        // dfs
         for (BasicBlock suc : entry.getCFGSucList()) {
             Inst firstInst = suc.getInstructions().get(0);
             if (firstInst instanceof PhiInst phiInst && useInstList.contains(phiInst)) {
@@ -136,6 +136,7 @@ public class Mem2RegPass implements Pass {
         for (BasicBlock child : entry.getImmDomList()) {
             rename(child);
         }
+        // 将本轮dfs入栈元素清除
         for (int i = 0; i < cnt; i++) {
             incomingValues.pop();
         }

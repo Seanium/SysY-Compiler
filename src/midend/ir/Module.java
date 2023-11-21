@@ -19,16 +19,11 @@ public class Module extends Value {
      */
     private final ArrayList<Value> globals;
     private final ArrayList<Function> functions;
-    /***
-     * 非库函数。
-     */
-    private final ArrayList<Function> notLibFunctions;
 
     private Module() {
         super(OtherType.module, "module");
         this.globals = new ArrayList<>();
         this.functions = new ArrayList<>();
-        this.notLibFunctions = new ArrayList<>();
     }
 
     public void addGlobalVar(GlobalVar globalVar) {
@@ -41,9 +36,6 @@ public class Module extends Value {
 
     public void addFunction(Function function) {
         functions.add(function);
-        if (!function.isLib()) {
-            notLibFunctions.add(function);
-        }
     }
 
     public ArrayList<Value> getGlobals() {
@@ -55,6 +47,12 @@ public class Module extends Value {
     }
 
     public ArrayList<Function> getNotLibFunctions() {
+        ArrayList<Function> notLibFunctions = new ArrayList<>();
+        for (Function function : functions) {
+            if (!function.isLib()) {
+                notLibFunctions.add(function);
+            }
+        }
         return notLibFunctions;
     }
 

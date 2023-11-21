@@ -11,7 +11,7 @@ public class BranchInst extends Inst {
      */
     public BranchInst(Value cond, BasicBlock trueBlock, BasicBlock falseBlock) {
         super(VoidType.voidType, "", Opcode.branch);
-        addOperand(cond);   // todo operand是否是这些
+        addOperand(cond);
         addOperand(trueBlock);
         addOperand(falseBlock);
     }

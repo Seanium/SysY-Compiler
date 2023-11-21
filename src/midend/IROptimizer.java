@@ -1,9 +1,6 @@
 package midend;
 
-import midend.pass.BuildDFPass;
-import midend.pass.Mem2RegPass;
-import midend.pass.Pass;
-import midend.pass.SimplifyBasicBlockPass;
+import midend.pass.*;
 
 import java.util.ArrayList;
 
@@ -21,9 +18,10 @@ public class IROptimizer {
 
     private IROptimizer() {
         this.passes = new ArrayList<>();
-        addPass(new SimplifyBasicBlockPass());
+        addPass(new BlockTailSimplifyPass());
         addPass(new BuildDFPass());
         addPass(new Mem2RegPass());
+        addPass(new DeadCodeEmitPass());
     }
 
     private void addPass(Pass pass) {

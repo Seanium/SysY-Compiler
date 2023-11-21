@@ -10,12 +10,12 @@ public class Value {
     /***
      * 记录谁使用了该value。
      */
-    protected final ArrayList<Use> useList;
+    protected final ArrayList<User> userList;
 
     public Value(Type type, String name) {
         this.type = type;
         this.name = name;
-        this.useList = new ArrayList<>();
+        this.userList = new ArrayList<>();
     }
 
     public Type getType() {
@@ -26,26 +26,25 @@ public class Value {
         return name;
     }
 
-    public ArrayList<Use> getUseList() {
-        return useList;
+    public ArrayList<User> getUserList() {
+        return userList;
     }
 
     /***
      * 将该value的全部user的operand，从该value替换为newOperand。
      */
     public void replaceUserOperandWith(Value newOperand) {
-        ArrayList<Use> uses = new ArrayList<>(useList); // 涉及到遍历删除，需要先把原use列表存起来
-        for (Use use : uses) {
-            User user = use.getUser();
+        ArrayList<User> users = new ArrayList<>(userList); // 涉及到遍历删除，需要先把原user列表存起来
+        for (User user : users) {
             user.replaceOperand(this, newOperand);
         }
     }
 
     public void removeUser(User user) {
-        useList.removeIf(use -> use.getUser().equals(user));
+        userList.removeIf(user::equals);
     }
 
-    public void addUse(Use use) {
-        useList.add(use);
+    public void addUser(User user) {
+        userList.add(user);
     }
 }

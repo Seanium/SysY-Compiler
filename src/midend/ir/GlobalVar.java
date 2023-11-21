@@ -3,7 +3,7 @@ package midend.ir;
 import midend.ir.type.PointerType;
 import midend.ir.type.Type;
 
-public class GlobalVar extends User {   // todo 可能不需要继承User
+public class GlobalVar extends User {
 
     private final Constant initValue;   // 在符号表中也存有初值。此处的属性是用于toString。
     private final boolean isConst;

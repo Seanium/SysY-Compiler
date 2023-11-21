@@ -1,9 +1,9 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/C/"
-my_ir_output_dir="my_ir_output/C/"
-#file_num=15 #A
-file_num=18 #B, C
+example_dir="2023代码生成辅助库/A/"
+my_ir_output_dir="my_ir_output/A/"
+file_num=15 #A
+#file_num=18 #B, C
 
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
 

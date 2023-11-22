@@ -9,10 +9,15 @@ import midend.ir.inst.JumpInst;
 import midend.ir.inst.ReturnInst;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 
 public class BlockTailSimplifyPass implements Pass {
     private final Module module;
+    /***
+     * 可达基本块的闭包。
+     */
+    private final HashSet<BasicBlock> reachableBlockClosure;
 
     /***
      * 简化每个基本块的尾部指令，并移除不可到达的基本块。
@@ -20,13 +25,14 @@ public class BlockTailSimplifyPass implements Pass {
      */
     public BlockTailSimplifyPass() {
         this.module = Module.getInstance();
+        this.reachableBlockClosure = new HashSet<>();
     }
 
     @Override
     public void run() {
         for (Function function : module.getNotLibFunctions()) {
             removeRedundantInst(function);
-            removeUnreachableBasicBlock(function);
+            removeUnreachableBlock(function);
         }
     }
 
@@ -52,12 +58,25 @@ public class BlockTailSimplifyPass implements Pass {
     /***
      * 移除不可到达的基本块。
      */
-    private void removeUnreachableBasicBlock(Function function) {
-        ArrayList<BasicBlock> basicBlocks = new ArrayList<>(function.getBasicBlocks()); // 保存遍历列表
-        basicBlocks.remove(0);  // 入口基本块不删除，先排除
-        for (BasicBlock basicBlock : basicBlocks) {
-            if (basicBlock.getUserList().isEmpty()) {   // user列表为空，说明没有跳转指令跳转到该基本块，需要删除
-                function.getBasicBlocks().remove(basicBlock);
+    private void removeUnreachableBlock(Function function) {
+        reachableBlockClosure.clear();
+        findReachableBlockClosure(function.getBasicBlocks().get(0));    // 首个基本块一定可达
+        function.getBasicBlocks().removeIf(basicBlock -> !reachableBlockClosure.contains(basicBlock));
+    }
+
+    /***
+     * 递归搜索可达基本块的闭包。
+     */
+    private void findReachableBlockClosure(BasicBlock entry) {
+        if (!reachableBlockClosure.contains(entry)) {
+            reachableBlockClosure.add(entry);
+            ArrayList<Inst> insts = entry.getInstructions();
+            Inst lastInst = insts.get(insts.size() - 1);
+            if (lastInst instanceof JumpInst jumpInst) {
+                findReachableBlockClosure(jumpInst.getTargetBasicBlock());
+            } else if (lastInst instanceof BranchInst branchInst) {
+                findReachableBlockClosure(branchInst.getTrueBlock());
+                findReachableBlockClosure(branchInst.getFalseBlock());
             }
         }
     }

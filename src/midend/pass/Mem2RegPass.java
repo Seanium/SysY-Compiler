@@ -6,139 +6,151 @@ import midend.ir.*;
 import midend.ir.inst.*;
 import midend.ir.type.IntegerType;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Stack;
+import java.util.*;
 
 public class Mem2RegPass implements Pass {
     private final Module module;
     /***
-     * 某个alloca变量的store/phi指令列表。
+     * 每个函数的alloca列表。
      */
-    private final ArrayList<Inst> defInstList;
+    private final HashMap<Function, ArrayList<AllocaInst>> funcAllocaInstsMap;
     /***
-     * 某个alloca变量的load/phi指令集合。
+     * 每个alloca变量的再定义基本块列表。
      */
-    private final ArrayList<Inst> useInstList;
+    private final HashMap<AllocaInst, ArrayList<BasicBlock>> allocaDefBlocksMap;
     /***
-     * 用于变量重命名的value栈。
+     * 每条phi指令对应的alloca变量。
      */
-    private final Stack<Value> incomingValues;
+    private final HashMap<PhiInst, AllocaInst> phiAllocaMap;
     /***
-     * 记录当前的allocaInst。
+     * 每个alloca变量的incomingValue栈。
      */
-    private AllocaInst curAllocaInst;
+    private final HashMap<AllocaInst, Stack<Value>> allocaIncomingValueMap;
     /***
-     * 记录当前的function。
+     * 变量重命名dfs标记已访问基本块。
      */
-    private Function curFunc;
+    private final HashSet<BasicBlock> visited;
 
     public Mem2RegPass() {
         this.module = Module.getInstance();
-        this.defInstList = new ArrayList<>();
-        this.useInstList = new ArrayList<>();
-        this.incomingValues = new Stack<>();
-        this.curAllocaInst = null;
-        curFunc = null;
+        this.funcAllocaInstsMap = new HashMap<>();
+        this.allocaDefBlocksMap = new HashMap<>();
+        this.phiAllocaMap = new HashMap<>();
+        this.allocaIncomingValueMap = new HashMap<>();
+        this.visited = new HashSet<>();
     }
 
     @Override
     public void run() {
         for (Function function : module.getNotLibFunctions()) {
-            this.curFunc = function;
-            for (BasicBlock basicBlock : function.getBasicBlocks()) {
-                ArrayList<Inst> insts = new ArrayList<>(basicBlock.getInstructions());
-                for (Inst inst : insts) {
-                    if (inst instanceof AllocaInst allocaInst && allocaInst.getTargetType() == IntegerType.i32) {   // allocaInst是某个变量的第一次定义点
-                        curAllocaInst = allocaInst;
-                        // 找出所有包含该变量定义的基本块
-                        ArrayList<BasicBlock> defBasicBlocks = getDefBasicBlocks(allocaInst);
-                        // 插入phi指令
-                        insertPhi(defBasicBlocks);
-                        // 变量重命名
-                        incomingValues.clear();
-                        rename(function.getBasicBlocks().get(0));
+            findDef(function);
+            insertPhi(function);
+            rename(function, function.getBasicBlocks().get(0));
+        }
+    }
+
+    private void findDef(Function function) {
+        funcAllocaInstsMap.put(function, new ArrayList<>());
+        for (BasicBlock basicBlock : function.getBasicBlocks()) {
+            for (Inst inst : basicBlock.getInstructions()) {
+                if (inst instanceof AllocaInst allocaInst && allocaInst.getTargetType() == IntegerType.i32) {   // 只处理普通变量alloca，不处理数组alloca
+                    // 初始化map
+                    funcAllocaInstsMap.get(function).add(allocaInst);
+                    allocaDefBlocksMap.put(allocaInst, new ArrayList<>());
+                    Stack<Value> stack = new Stack<>();
+                    stack.push(new Constant(IntegerType.i32, 0));   // 需要对alloc变量初始化为0，防止peek()时栈内为空的情况
+                    allocaIncomingValueMap.put(allocaInst, stack);
+                    // 填充map
+                    for (User user : allocaInst.getUserList()) {
+                        if (user instanceof StoreInst storeInst) {  // store是该alloca变量的再定义点
+                            allocaDefBlocksMap.get(allocaInst).add(storeInst.getParentBasicBlock());
+                        }
                     }
                 }
             }
         }
     }
 
-    /***
-     * 找到某变量的所有定义点的所属基本块。
-     */
-    private ArrayList<BasicBlock> getDefBasicBlocks(AllocaInst allocaInst) {
-        ArrayList<BasicBlock> defBasicBlocks = new ArrayList<>();
-        defInstList.clear();
-        useInstList.clear();
-        for (User user : allocaInst.getUserList()) {
-            if (user instanceof StoreInst storeInst) {  // store指令是某个变量的重定义点
-                defBasicBlocks.add(storeInst.getParentBasicBlock());
-                defInstList.add(storeInst);
-            } else if (user instanceof LoadInst loadInst) {
-                useInstList.add(loadInst);
-            }
-        }
-        return defBasicBlocks;
-    }
-
-    private void insertPhi(ArrayList<BasicBlock> defBasicBlocks) {
-        HashSet<BasicBlock> F = new HashSet<>();    // 已添加phi的基本块
-        ArrayList<BasicBlock> W = new ArrayList<>(defBasicBlocks);    // 包含变量v的定义的基本块
-        while (!W.isEmpty()) {
-            BasicBlock X = W.remove(W.size() - 1);
-            for (BasicBlock Y : X.getDFList()) {
-                if (!F.contains(Y)) {
-                    // 插入phi到Y开头
-                    PhiInst phiInst = new PhiInst(IRBuilder.getInstance().genLocalVarNameForFunc(curFunc), Y.getCFGPreList());
-                    Y.addInstAtFirst(phiInst);
-                    useInstList.add(phiInst);
-                    defInstList.add(phiInst);
-                    // 标记Y已添加phi
-                    F.add(Y);
-                    if (!defBasicBlocks.contains(Y)) {
-                        W.add(Y);
+    private void insertPhi(Function function) {
+        // 遍历每个alloca变量v
+        for (AllocaInst v : funcAllocaInstsMap.get(function)) {
+            HashSet<BasicBlock> F = new HashSet<>();    // 记录变量v已插入phi的基本块，防止重复插入phi
+            ArrayList<BasicBlock> W = new ArrayList<>(allocaDefBlocksMap.get(v));  // 包含变量v的再定义的基本块列表
+            while (!W.isEmpty()) {
+                BasicBlock X = W.remove(W.size() - 1);
+                for (BasicBlock Y : X.getDFList()) {
+                    if (!F.contains(Y)) {
+                        // 插入phi到Y开头
+                        PhiInst phiInst = new PhiInst(IRBuilder.getInstance().genLocalVarNameForFunc(function), Y.getCFGPreList());
+                        Y.addInstAtFirst(phiInst);
+                        // 记录该phi的alloca变量v
+                        phiAllocaMap.put(phiInst, v);
+                        // 标记Y已添加phi
+                        F.add(Y);
+                        if (!allocaDefBlocksMap.get(v).contains(Y)) {
+                            W.add(Y);
+                        }
                     }
                 }
             }
         }
     }
 
-    private void rename(BasicBlock entry) {
-        int cnt = 0;
+    private void rename(Function function, BasicBlock entry) {
+        visited.add(entry);
+        HashMap<AllocaInst, Integer> pushCnt = new HashMap<>();    // 统计alloca变量在该基本块incomingValueStack入栈次数，处理结束后按入栈次数出栈
         Iterator<Inst> iterator = entry.getInstructions().iterator();
         while (iterator.hasNext()) {
             Inst inst = iterator.next();
-            if (inst instanceof LoadInst && useInstList.contains(inst)) {
-                Value newOperand = incomingValues.empty() ? new Constant(IntegerType.i32, 0) : incomingValues.peek();
-                inst.replaceUserOperandWith(newOperand);
-                iterator.remove();
-            } else if (inst instanceof StoreInst storeInst && defInstList.contains(inst)) {
-                Value from = storeInst.getFrom();
-                incomingValues.push(from);  // 更新到达定义
-                cnt++;
-                iterator.remove();
-            } else if (inst instanceof PhiInst phiInst && defInstList.contains(inst)) {
-                incomingValues.push(phiInst);   // 更新到达定义
-                cnt++;
-            } else if (inst.equals(curAllocaInst)) {
-                iterator.remove();
+            if (inst instanceof AllocaInst allocaInst && funcAllocaInstsMap.get(function).contains(allocaInst)) {
+                iterator.remove(); // 删除指令
+            } else if (inst instanceof LoadInst loadInst) {
+                if (!(loadInst.getPointer() instanceof AllocaInst allocaInst)) {
+                    continue;
+                }
+                if (funcAllocaInstsMap.get(function).contains(allocaInst)) {
+                    loadInst.replaceUserOperandWith(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
+                    iterator.remove(); // 删除指令
+                }
+            } else if (inst instanceof StoreInst storeInst) {
+                if (!(storeInst.getTo() instanceof AllocaInst allocaInst)) {
+                    continue;
+                }
+                if (funcAllocaInstsMap.get(function).contains(allocaInst)) {
+                    allocaIncomingValueMap.get(allocaInst).push(storeInst.getFrom()); // 更新到达定义
+                    pushCnt.put(allocaInst, pushCnt.getOrDefault(allocaInst, 0) + 1);   // 入栈计数++
+                    iterator.remove(); // 删除指令
+                }
+            } else if (inst instanceof PhiInst phiInst) {
+                if (phiAllocaMap.containsKey(phiInst)) {
+                    AllocaInst allocaInst = phiAllocaMap.get(phiInst);
+                    allocaIncomingValueMap.get(allocaInst).push(phiInst); // 更新到达定义
+                    pushCnt.put(allocaInst, pushCnt.getOrDefault(allocaInst, 0) + 1);   // 入栈计数++
+                }
+            }
+            for (BasicBlock suc : entry.getCFGSucList()) {
+                for (Inst inst1 : suc.getInstructions()) {
+                    if (!(inst1 instanceof PhiInst phiInst)) {
+                        break;
+                    }
+                    if (phiAllocaMap.containsKey(phiInst)) {
+                        AllocaInst allocaInst = phiAllocaMap.get(phiInst);
+                        phiInst.addOption(allocaIncomingValueMap.get(allocaInst).peek(), entry);
+                    }
+                }
             }
         }
         // dfs
         for (BasicBlock suc : entry.getCFGSucList()) {
-            Inst firstInst = suc.getInstructions().get(0);
-            if (firstInst instanceof PhiInst phiInst && useInstList.contains(phiInst)) {
-                phiInst.addOption(incomingValues.empty() ? new Constant(IntegerType.i32, 0) : incomingValues.peek(), entry);
+            if (!visited.contains(suc)) {
+                rename(function, suc);
             }
         }
-        for (BasicBlock child : entry.getImmDomList()) {
-            rename(child);
-        }
-        // 将本轮dfs入栈元素清除
-        for (int i = 0; i < cnt; i++) {
-            incomingValues.pop();
+        // 出栈
+        for (AllocaInst allocaInst : pushCnt.keySet()) {
+            for (int i = 0; i < pushCnt.get(allocaInst); i++) {
+                allocaIncomingValueMap.get(allocaInst).pop();
+            }
         }
     }
 }

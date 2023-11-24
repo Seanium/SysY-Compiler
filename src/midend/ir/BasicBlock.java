@@ -1,6 +1,7 @@
 package midend.ir;
 
 import midend.ir.inst.Inst;
+import midend.ir.inst.MoveInst;
 import midend.ir.type.OtherType;
 
 import java.util.ArrayList;
@@ -44,6 +45,14 @@ public class BasicBlock extends Value {
      * 该基本块的严格支配边界。
      */
     private final ArrayList<BasicBlock> dfList;
+    /***
+     * 基本块开头的move指令集合。
+     */
+    private final ArrayList<MoveInst> beginMoves;
+    /***
+     * 基本块末尾的move指令集合。
+     */
+    private final ArrayList<MoveInst> endMoves;
 
     public BasicBlock(String name, Function parentFunction) {
         super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
@@ -58,6 +67,8 @@ public class BasicBlock extends Value {
         this.immDomList = new ArrayList<>();
         this.immDomBy = null;
         this.dfList = new ArrayList<>();
+        this.beginMoves = new ArrayList<>();
+        this.endMoves = new ArrayList<>();
     }
 
     /***
@@ -76,9 +87,16 @@ public class BasicBlock extends Value {
         inst.setParentBasicBlock(this);
     }
 
+    public void addInsts(int index, ArrayList<? extends Inst> insts) {
+        instructions.addAll(index, insts);
+        for (Inst inst : insts) {
+            inst.setParentBasicBlock(this);
+        }
+    }
+
     /***
-     * 禁止通过此方法向基本块中插入指令。
-     * 如需插入，请调用IRBuilder中相关方法，或addInstAtFisrt()方法。
+     * 禁止通过此方法向基本块中插入指令。(防止忘记设置指令的父基本块)
+     * 如需插入，请调用IRBuilder中相关方法，或addInstAtFisrt()、addInsts()方法。
      */
     public ArrayList<Inst> getInstructions() {
         return instructions;
@@ -132,6 +150,14 @@ public class BasicBlock extends Value {
 
     public ArrayList<BasicBlock> getDomByList() {
         return domByList;
+    }
+
+    public ArrayList<MoveInst> getBeginMoves() {
+        return beginMoves;
+    }
+
+    public ArrayList<MoveInst> getEndMoves() {
+        return endMoves;
     }
 
     @Override

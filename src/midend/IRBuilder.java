@@ -111,7 +111,7 @@ public class IRBuilder {
      * 生成当前函数的基本块标签名
      */
     public String genBasicBlockLabel() {
-        return "v" + genRegIndex(getCurFunction());
+        return "b" + genRegIndex(getCurFunction());
     }
 
     /***

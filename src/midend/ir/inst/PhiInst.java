@@ -9,6 +9,11 @@ import java.util.ArrayList;
 public class PhiInst extends Inst {
     private final ArrayList<BasicBlock> cfgPreList;
 
+    /***
+     * cfgPreList中的基本块一定不会重复，而operandList中的Value有可能重复，
+     * 因此如果用Value来查找其在operandList的下标，再用此下标找对应的preBlock是错的，只找到了第一个该Value的下标。
+     * 只能用operand的下标获取operand对应的preBlock，因为二者之间是多对一映射。
+     */
     public PhiInst(String name, ArrayList<BasicBlock> cfgPreList) {
         super(IntegerType.i32, name, Opcode.phi);
         this.cfgPreList = cfgPreList;
@@ -21,6 +26,10 @@ public class PhiInst extends Inst {
         int index = cfgPreList.indexOf(pre);
         operandList.set(index, value);
         value.addUser(this);
+    }
+
+    public ArrayList<BasicBlock> getCfgPreList() {
+        return cfgPreList;
     }
 
     @Override

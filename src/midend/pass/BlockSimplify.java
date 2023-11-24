@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 
-public class BlockTailSimplifyPass implements Pass {
+public class BlockSimplify implements Pass {
     private final Module module;
     /***
      * 可达基本块的闭包。
@@ -23,7 +23,7 @@ public class BlockTailSimplifyPass implements Pass {
      * 简化每个基本块的尾部指令，并移除不可到达的基本块。
      * 简化尾部指令，指的是移除冗余的br或ret及其后续指令（即保证每个基本块的末尾语句是首条br或ret，为后面计算CFG做好准备）。
      */
-    public BlockTailSimplifyPass() {
+    public BlockSimplify() {
         this.module = Module.getInstance();
         this.reachableBlockClosure = new HashSet<>();
     }
@@ -47,7 +47,7 @@ public class BlockTailSimplifyPass implements Pass {
                 Inst inst = iterator.next();
                 if (allowRemove) {
                     iterator.remove();
-                    inst.delOperandThisUser();  // 指令被删除后，还需删除该指令作为其他指令user的信息
+                    inst.delThisUserFromAllOperand();  // 指令被删除后，还需删除该指令作为其他指令user的信息
                 } else if (inst instanceof BranchInst || inst instanceof JumpInst || inst instanceof ReturnInst) {
                     allowRemove = true; // 首条br/ret之后的指令均需要删除
                 }

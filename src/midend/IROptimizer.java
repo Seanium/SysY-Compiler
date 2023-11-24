@@ -1,5 +1,7 @@
 package midend;
 
+import utils.FileIO;
+import midend.ir.Module;
 import midend.pass.*;
 
 import java.util.ArrayList;
@@ -15,13 +17,16 @@ public class IROptimizer {
     }
 
     private final ArrayList<Pass> passes;
+    private final Module module;
 
     private IROptimizer() {
         this.passes = new ArrayList<>();
-        addPass(new BlockTailSimplifyPass());
-        addPass(new BuildDFPass());
-        addPass(new Mem2RegPass());
-        addPass(new DeadCodeEmitPass());
+        this.module = Module.getInstance();
+        addPass(new BlockSimplify());
+        addPass(new DFBuild());
+        addPass(new Mem2Reg());
+        addPass(new DeadCodeRemove());
+        addPass(new PhiRemove());
     }
 
     private void addPass(Pass pass) {
@@ -31,6 +36,10 @@ public class IROptimizer {
     public void runPasses() {
         for (Pass pass : passes) {
             pass.run();
+            // 在消除phi之前，保存llvm_ir
+            if (pass instanceof DeadCodeRemove) {
+                FileIO.write("llvm_ir.txt", module.toString());
+            }
         }
     }
 }

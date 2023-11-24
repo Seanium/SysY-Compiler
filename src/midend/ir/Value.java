@@ -32,14 +32,18 @@ public class Value {
 
     /***
      * 将该value的全部user的operand，从该value替换为newOperand。
+     * 也就是说，将后续对该value的使用，全部改为对newOperand的使用。
      */
-    public void replaceUserOperandWith(Value newOperand) {
+    public void replaceOperandOfAllUser(Value newOperand) {
         ArrayList<User> users = new ArrayList<>(userList); // 涉及到遍历删除，需要先把原user列表存起来
         for (User user : users) {
             user.replaceOperand(this, newOperand);
         }
     }
 
+    /***
+     * 删除该value的指定user。
+     */
     public void removeUser(User user) {
         userList.removeIf(user::equals);
     }

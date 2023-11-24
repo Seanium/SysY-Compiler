@@ -9,12 +9,12 @@ import midend.ir.inst.*;
 import java.util.HashSet;
 import java.util.Iterator;
 
-public class DeadCodeEmitPass implements Pass {
+public class DeadCodeRemove implements Pass {
 
     private final Module module;
     private final HashSet<Inst> usefulInstClosure;
 
-    public DeadCodeEmitPass() {
+    public DeadCodeRemove() {
         this.module = Module.getInstance();
         this.usefulInstClosure = new HashSet<>();
     }
@@ -25,7 +25,7 @@ public class DeadCodeEmitPass implements Pass {
         module.getFunctions().removeIf(function -> function.getUserList().isEmpty() && !function.getName().equals("@main"));
         for (Function function : module.getNotLibFunctions()) {
             // 删除无用指令
-            deadInstEmit(function);
+            deadInstRemove(function);
         }
     }
 
@@ -37,7 +37,7 @@ public class DeadCodeEmitPass implements Pass {
                 inst instanceof StoreInst;
     }
 
-    private void deadInstEmit(Function function) {
+    private void deadInstRemove(Function function) {
         usefulInstClosure.clear();
         // 找到该函数的有用指令闭包
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
@@ -54,7 +54,7 @@ public class DeadCodeEmitPass implements Pass {
                 Inst inst = iterator.next();
                 if (!usefulInstClosure.contains(inst)) {
                     iterator.remove();
-                    inst.delOperandThisUser();  // 删除该指令作为user的信息
+                    inst.delThisUserFromAllOperand();  // 删除该指令作为user的信息
                 }
             }
         }

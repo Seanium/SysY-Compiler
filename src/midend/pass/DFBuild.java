@@ -10,10 +10,10 @@ import midend.ir.inst.JumpInst;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class BuildDFPass implements Pass {
+public class DFBuild implements Pass {
     private final Module module;
 
-    public BuildDFPass() {
+    public DFBuild() {
         this.module = Module.getInstance();
     }
 

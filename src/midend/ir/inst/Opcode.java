@@ -21,5 +21,7 @@ public enum Opcode {
 
 
     // Other Operations
-    call, icmp, phi
+    call, icmp, phi,
+    // llvm ir不存在该指令，仅在消phi后生成，用于目标代码生成
+    move
 }

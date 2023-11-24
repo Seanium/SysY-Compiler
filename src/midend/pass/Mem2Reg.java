@@ -8,7 +8,7 @@ import midend.ir.type.IntegerType;
 
 import java.util.*;
 
-public class Mem2RegPass implements Pass {
+public class Mem2Reg implements Pass {
     private final Module module;
     /***
      * 每个函数的alloca列表。
@@ -31,7 +31,7 @@ public class Mem2RegPass implements Pass {
      */
     private final HashSet<BasicBlock> visited;
 
-    public Mem2RegPass() {
+    public Mem2Reg() {
         this.module = Module.getInstance();
         this.funcAllocaInstsMap = new HashMap<>();
         this.allocaDefBlocksMap = new HashMap<>();
@@ -109,7 +109,7 @@ public class Mem2RegPass implements Pass {
                     continue;
                 }
                 if (funcAllocaInstsMap.get(function).contains(allocaInst)) {
-                    loadInst.replaceUserOperandWith(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
+                    loadInst.replaceOperandOfAllUser(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
                     iterator.remove(); // 删除指令
                 }
             } else if (inst instanceof StoreInst storeInst) {

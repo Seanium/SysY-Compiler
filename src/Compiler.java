@@ -1,6 +1,5 @@
 import backend.MIPSGenerator;
 import backend.mips.MIPSFile;
-import utils.FileIO;
 import frontend.Lexer;
 import frontend.Parser;
 import frontend.error.ErrorList;
@@ -8,6 +7,7 @@ import frontend.node.CompUnitNode;
 import midend.IRGenerator;
 import midend.IROptimizer;
 import midend.ir.Module;
+import utils.FileIO;
 
 public class Compiler {
 
@@ -44,17 +44,22 @@ public class Compiler {
 //        System.out.println(module);
         FileIO.write("llvm_ir_raw.txt", module.toString());
 
-//        5.中间代码优化
+////        5.中间代码优化
+//        IROptimizer irOptimizer = IROptimizer.getInstance();
+//        irOptimizer.runPasses();
+//        FileIO.write("llvm_ir_move.txt", module.toString());
+
+//        6.目标代码生成 (MIPS)
+        MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
+        mipsGenerator.visitModule(Module.getInstance());
+//        输出
+        MIPSFile mipsFile = MIPSFile.getInstance();
+//        System.out.println(mipsFile);
+        FileIO.write("mips.txt", mipsFile.toString());
+
+        //        5.中间代码优化
         IROptimizer irOptimizer = IROptimizer.getInstance();
         irOptimizer.runPasses();
         FileIO.write("llvm_ir_move.txt", module.toString());
-
-////        6.目标代码生成 (MIPS)
-//        MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
-//        mipsGenerator.visitModule(Module.getInstance());
-////        输出
-//        MIPSFile mipsFile = MIPSFile.getInstance();
-////        System.out.println(mipsFile);
-//        FileIO.write("mips.txt", mipsFile.toString());
     }
 }

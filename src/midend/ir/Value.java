@@ -1,12 +1,15 @@
 package midend.ir;
 
+import midend.ir.inst.Inst;
 import midend.ir.type.Type;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 public class Value {
     protected final Type type;
     protected String name;
+    private final HashSet<Inst> liveRange;
     /***
      * 记录谁使用了该value。
      */
@@ -16,6 +19,7 @@ public class Value {
         this.type = type;
         this.name = name;
         this.userList = new ArrayList<>();
+        this.liveRange = new HashSet<>();
     }
 
     public Type getType() {
@@ -46,6 +50,10 @@ public class Value {
      */
     public void removeUser(User user) {
         userList.removeIf(user::equals);
+    }
+
+    public HashSet<Inst> getLiveRange() {
+        return liveRange;
     }
 
     public void addUser(User user) {

@@ -1,8 +1,8 @@
 package midend;
 
-import utils.FileIO;
 import midend.ir.Module;
 import midend.pass.*;
+import utils.FileIO;
 
 import java.util.ArrayList;
 
@@ -27,6 +27,8 @@ public class IROptimizer {
         addPass(new Mem2Reg());
         addPass(new DeadCodeRemove());
         addPass(new PhiRemove());
+        addPass(new LivenessAnalyze());
+//        addPass(new RegAllocator());
     }
 
     private void addPass(Pass pass) {

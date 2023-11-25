@@ -1,14 +1,15 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/A/"
-my_mips_output_dir="my_mips_output/A/"
-file_num=15 #A
-#file_num=18 #B, C
+example_dir="2023代码生成辅助库/B/"
+my_mips_output_dir="my_mips_output/B/"
+file_index_begin=1
+#file_index_end=15 #A
+file_index_end=18 #B,C
 
 mars_file="mars.jar"
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
 
-for i in $(seq 1 "$file_num")
+for i in $(seq "$file_index_begin" "$file_index_end")
 do
   test_file="${example_dir}testfile${i}.txt"
   input_file="${example_dir}input${i}.txt"

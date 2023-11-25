@@ -26,6 +26,17 @@ public class User extends Value {
         return operandList;
     }
 
+    public ArrayList<Value> getVarOperandList() {
+        ArrayList<Value> varOperandList = new ArrayList<>();
+        for (Value operand : operandList) {
+            if (operand instanceof Constant || operand instanceof BasicBlock || operand instanceof Function) {
+                continue;
+            }
+            varOperandList.add(operand);
+        }
+        return varOperandList;
+    }
+
     /***
      * 将该value的operand中的oldValue，替换为newValue。
      */

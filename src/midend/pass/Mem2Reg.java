@@ -8,7 +8,7 @@ import midend.ir.type.IntegerType;
 
 import java.util.*;
 
-public class Mem2Reg implements Pass {
+public class Mem2Reg implements IRPass {
     private final Module module;
     /***
      * 每个函数的alloca列表。

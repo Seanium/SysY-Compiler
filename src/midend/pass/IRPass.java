@@ -1,5 +1,5 @@
 package midend.pass;
 
-public interface Pass {
+public interface IRPass {
     void run();
 }

@@ -11,7 +11,7 @@ import utils.Config;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
-public class RegAlloc implements Pass {
+public class RegAlloc implements IRPass {
     private final Module module;
     /***
      * 当前reg中存放的value。

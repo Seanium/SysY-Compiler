@@ -9,7 +9,7 @@ import midend.ir.inst.*;
 import java.util.HashSet;
 import java.util.Iterator;
 
-public class DeadCodeRemove implements Pass {
+public class DeadCodeRemove implements IRPass {
 
     private final Module module;
     private final HashSet<Inst> usefulInstClosure;

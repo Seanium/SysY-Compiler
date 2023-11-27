@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 
-public class LivenessAnalyze implements Pass {
+public class LivenessAnalyze implements IRPass {
     private final Module module;
 
     public LivenessAnalyze() {

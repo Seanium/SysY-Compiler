@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 
-public class BlockSimplify implements Pass {
+public class BlockSimplify implements IRPass {
     private final Module module;
     /***
      * 可达基本块的闭包。

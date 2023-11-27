@@ -10,7 +10,7 @@ import midend.ir.inst.JumpInst;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class DFBuild implements Pass {
+public class DFBuild implements IRPass {
     private final Module module;
 
     public DFBuild() {

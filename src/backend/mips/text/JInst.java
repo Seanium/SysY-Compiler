@@ -14,6 +14,10 @@ public class JInst extends Asm {
         this.label = label;
     }
 
+    public String getLabel() {
+        return label;
+    }
+
     @Override
     public String toString() {
         return opcode + " " + label;

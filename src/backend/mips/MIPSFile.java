@@ -1,5 +1,7 @@
 package backend.mips;
 
+import backend.mips.text.Comment;
+
 import java.util.ArrayList;
 
 public class MIPSFile {
@@ -18,12 +20,30 @@ public class MIPSFile {
      */
     private final ArrayList<Asm> text;
 
+    /***
+     * 获得text中的非注释部分。
+     */
+    public ArrayList<Asm> getTextWithoutComment() {
+        ArrayList<Asm> textWithoutComment = new ArrayList<>();
+        for (Asm asm : text) {
+            if (asm instanceof Comment) {
+                continue;
+            }
+            textWithoutComment.add(asm);
+        }
+        return textWithoutComment;
+    }
+
     public void addAsmToData(Asm asm) {
         data.add(asm);
     }
 
     public void addAsmToText(Asm asm) {
         text.add(asm);
+    }
+
+    public ArrayList<Asm> getText() {
+        return text;
     }
 
     @Override

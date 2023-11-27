@@ -1,4 +1,5 @@
 import backend.MIPSGenerator;
+import backend.MIPSOptimizer;
 import backend.mips.MIPSFile;
 import frontend.Lexer;
 import frontend.Parser;
@@ -60,17 +61,25 @@ public class Compiler {
             FileIO.write("mips_raw.txt", mipsFile.toString());
         }
 
-//        6.代码优化
+//        6.中端代码优化
         IROptimizer irOptimizer = IROptimizer.getInstance();
         irOptimizer.runPasses();
         FileIO.write("llvm_ir_move.txt", module.toString());
 
-//        7.目标代码生成 (MIPS)(优化)
+//        7.目标代码生成 (MIPS)(仅中端优化)
         mipsGenerator = new MIPSGenerator();
         mipsGenerator.visitModule(Module.getInstance());
 //        输出
+        if (Config.getMode() == Config.Mode.DEBUG) {
+            mipsFile = mipsGenerator.getCurMIPSFile();
+            FileIO.write("mips_no_back_opt.txt", mipsFile.toString());
+        }
+
+//        8.后端代码优化
         mipsFile = mipsGenerator.getCurMIPSFile();
-//        System.out.println(mipsFile);
+        MIPSOptimizer mipsOptimizer = new MIPSOptimizer(mipsFile);
+        mipsOptimizer.runPasses();
+//        输出
         FileIO.write("mips.txt", mipsFile.toString());
     }
 }

@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Stack;
 
-public class PhiRemove implements Pass {
+public class PhiRemove implements IRPass {
     private final Module module;
 
     public PhiRemove() {

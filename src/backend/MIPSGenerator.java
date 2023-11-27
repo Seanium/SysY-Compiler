@@ -1,5 +1,6 @@
 package backend;
 
+import backend.mips.MIPSFile;
 import backend.mips.Reg;
 import backend.mips.data.AsciizData;
 import backend.mips.data.SpaceData;
@@ -14,20 +15,15 @@ import midend.ir.type.IntegerType;
 import java.util.ArrayList;
 
 public class MIPSGenerator {
-    private static MIPSGenerator instance;
-
-    public static MIPSGenerator getInstance() {
-        if (instance == null) {
-            instance = new MIPSGenerator();
-        }
-        return instance;
-    }
-
-    private MIPSGenerator() {
-        this.mipsBuilder = MIPSBuilder.getInstance();
-    }
-
     private final MIPSBuilder mipsBuilder;
+
+    public MIPSGenerator() {
+        this.mipsBuilder = new MIPSBuilder();
+    }
+
+    public MIPSFile getCurMIPSFile() {
+        return mipsBuilder.getMipsFile();
+    }
 
     public void visitModule(Module module) {
         for (Value global : module.getGlobals()) {
@@ -78,10 +74,20 @@ public class MIPSGenerator {
         mipsBuilder.addAsm(funcLabel);
         // 进入record
         mipsBuilder.enterRecord(function.getName());
-        // 添加形参到栈空间（实际是在调用方生成mips代码，这里只是添加到被调用函数的record）
+        // 添加形参到栈空间（之后在调用方将实参store到这些空间，这里只是先在被调用函数的record开辟空间）
         ArrayList<Param> params = function.getParams();
         for (Param param : params) {
             mipsBuilder.addValueToCurRecord(param);
+        }
+        // 若形参分配到寄存器，将其从内存load到寄存器中 // 该步骤在函数第一个块的标签之前
+        for (Param param : params) {
+            if (param.inReg()) {
+                // lw $reg offset($sp)
+                Reg reg = param.getReg();
+                int offset = mipsBuilder.getOffsetOfValue(param);
+                LwInst lwInst = new LwInst(reg, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            }
         }
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
             visitBasicBlock(basicBlock);
@@ -97,7 +103,7 @@ public class MIPSGenerator {
     }
 
     private void visitInst(Inst inst) {
-        Comment comment = new Comment(inst.toString());
+        Comment comment = new Comment("---[INST]" + inst.toString());
         mipsBuilder.addAsm(comment);
         if (inst instanceof AllocaInst allocaInst) {
             visitAllocaInst(allocaInst);
@@ -121,6 +127,8 @@ public class MIPSGenerator {
             visitIcmpInst(icmpInst);
         } else if (inst instanceof BinaryInst binaryInst) {
             visitBinaryInst(binaryInst);
+        } else if (inst instanceof MoveInst moveInst) {
+            visitMoveInst(moveInst);
         }
     }
 
@@ -128,134 +136,205 @@ public class MIPSGenerator {
         if (allocaInst.getTargetType() == IntegerType.i32) {    // 不是数组
             mipsBuilder.addValueToCurRecord(allocaInst);
         } else {    // 局部数组 下标小的元素在低地址
-            // 活动记录中，预留数组元素位置，并在之后的一个栈帧中存入首元素偏移量
             int arrayOffset = mipsBuilder.insertArray(allocaInst);
-            // addiu $t0 $sp arrayOffset
-            AddiuInst addiuInst = new AddiuInst(Reg.t0, Reg.sp, arrayOffset);
-            mipsBuilder.addAsm(addiuInst);
-            // sw $t0 offset($sp)
-            int offset = mipsBuilder.addValueToCurRecord(allocaInst);
-            SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(swInst);
+            if (allocaInst.notInReg()) {    // 首元素地址未分配寄存器
+                // addiu $t0 $sp arrayOffset
+                AddiuInst addiuInst = new AddiuInst(Reg.t0, Reg.sp, arrayOffset);
+                mipsBuilder.addAsm(addiuInst);
+                // sw $t0 offset($sp) 在栈帧中存入首元素偏移量
+                int offset = mipsBuilder.addValueToCurRecord(allocaInst);
+                SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            } else {    // 首元素地址分配了寄存器
+                // addiu $toReg $sp arrayOffset
+                Reg toReg = allocaInst.getReg();
+                AddiuInst addiuInst = new AddiuInst(toReg, Reg.sp, arrayOffset);
+                mipsBuilder.addAsm(addiuInst);
+            }
         }
     }
 
     private void visitGEPInst(GEPInst gepInst) {
         if (gepInst.getBasePointer() instanceof AllocaInst || gepInst.getBasePointer() instanceof Param) {   // 局部数组 数组形参 下标小的元素在低地址
-            // lw $t0 offset($sp) 数组首元素地址存入t0
-            int offset = mipsBuilder.getOffsetOfValue(gepInst.getBasePointer());
-            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
-            // 目标元素内存地址偏移量存入t1
-            if (gepInst.getOffset() instanceof Constant constant) {  // 若偏移量为常数
+            Value base = gepInst.getBasePointer();  // 内存基地址
+            Reg baseReg = Reg.t0;  // 默认为t0，若已分配寄存器再更改
+            if (gepInst.getBasePointer().notInReg()) {  // 若基地址未分配寄存器
+                // lw $t0 offset($sp) 数组首元素地址存入t0
+                int offset = mipsBuilder.getOffsetOfValue(gepInst.getBasePointer());
+                LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 若基地址分配了寄存器
+                baseReg = base.getReg();
+            }
+            Value gepOffset = gepInst.getOffset();  // 目标元素内存地址偏移量
+            Reg gepOffsetReg = Reg.t1;  // 默认为t1，若已分配寄存器再更改
+            if (gepOffset instanceof Constant constant) {  // 若偏移量为常数
                 // li $t1 eleOffset
                 int eleOffset = 4 * constant.getValue(); // 下标小的元素在低地址
                 LiInst liInst = new LiInst(Reg.t1, eleOffset);
                 mipsBuilder.addAsm(liInst);
             } else {    // 偏移量不为常数
-                // lw $t1 offset1($sp)
-                int offset1 = mipsBuilder.getOffsetOfValue(gepInst.getOffset());
-                LwInst lwInst1 = new LwInst(Reg.t1, offset1, Reg.sp);
-                mipsBuilder.addAsm(lwInst1);
-                // sll $t1 $t1 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
-                SllInst sllInst = new SllInst(Reg.t1, Reg.t1, 2);
+                if (gepOffset.notInReg()) {   // 若gep偏移量未分配寄存器
+                    // lw $t1 offset1($sp)
+                    int offset1 = mipsBuilder.getOffsetOfValue(gepOffset);
+                    LwInst lwInst1 = new LwInst(Reg.t1, offset1, Reg.sp);
+                    mipsBuilder.addAsm(lwInst1);
+                } else {    // 若gep偏移量分配了寄存器
+                    gepOffsetReg = gepOffset.getReg();
+                }
+                // sll $t1 $gepOffsetReg 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
+                SllInst sllInst = new SllInst(Reg.t1, gepOffsetReg, 2);
                 mipsBuilder.addAsm(sllInst);
             }
-            // addu $t0 $t0 $t1 目标元素地址存入t0
-            AdduInst adduInst = new AdduInst(Reg.t0, Reg.t0, Reg.t1);
-            mipsBuilder.addAsm(adduInst);
-            // sw $t0 offset1($t1) 目标元素地址存入栈帧
-            int offset1 = mipsBuilder.addValueToCurRecord(gepInst);
-            SwInst swInst = new SwInst(Reg.t0, offset1, Reg.sp);
-            mipsBuilder.addAsm(swInst);
+            if (gepInst.notInReg()) {   // 若gep结果未分配寄存器
+                // addu $t1 $baseReg $t1 目标元素地址存入t1
+                AdduInst adduInst = new AdduInst(Reg.t1, baseReg, Reg.t1);
+                mipsBuilder.addAsm(adduInst);
+                // sw $t1 offset1($sp) 目标元素地址存入栈帧
+                int offset1 = mipsBuilder.addValueToCurRecord(gepInst);
+                SwInst swInst = new SwInst(Reg.t1, offset1, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            } else {    // 若gep结果分配了寄存器
+                // addu $toReg $baseReg $t1
+                Reg toReg = gepInst.getReg();
+                AdduInst adduInst = new AdduInst(toReg, baseReg, Reg.t1);
+                mipsBuilder.addAsm(adduInst);
+            }
         } else if (gepInst.getBasePointer() instanceof GlobalArray globalArray) {   // 全局数组 下标小的元素在低地址
+            Value gepOffset = gepInst.getOffset();  // 目标元素地址偏移量 gep偏移量
+            Reg gepOffsetReg = Reg.t1;  // gep偏移量寄存器 默认为t1，若已分配寄存器再更改
             // 目标元素内存地址偏移量，存到t1
-            if (gepInst.getOffset() instanceof Constant constant) { // 若偏移量为常数
+            if (gepOffset instanceof Constant constant) { // 若偏移量为常数
                 // li $t1 eleOffset
                 int eleOffset = 4 * constant.getValue();
                 LiInst liInst = new LiInst(Reg.t1, eleOffset);
                 mipsBuilder.addAsm(liInst);
             } else {    // 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
-                // lw $t1 offset($sp)
-                int offset = mipsBuilder.getOffsetOfValue(gepInst.getOffset());
-                LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
-                mipsBuilder.addAsm(lwInst);
-                // sll $t1 $t1 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
-                SllInst sllInst = new SllInst(Reg.t1, Reg.t1, 2);
+                if (gepOffset.notInReg()) { // 若gep偏移量未分配寄存器
+                    // lw $t1 offset($sp)
+                    int offset = mipsBuilder.getOffsetOfValue(gepOffset);
+                    LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
+                    mipsBuilder.addAsm(lwInst);
+                } else {    // 若gep偏移量分配到寄存器
+                    gepOffsetReg = gepOffset.getReg();
+                }
+                // sll $t1 $gepOffsetReg 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
+                SllInst sllInst = new SllInst(Reg.t1, gepOffsetReg, 2);
                 mipsBuilder.addAsm(sllInst);
             }
-            // la $t0 arrayLabel($t1) 目标元素地址存到t0
-            LaInst laInst = new LaInst(Reg.t0, globalArray.getName().substring(1), Reg.t1);
-            mipsBuilder.addAsm(laInst);
-            // sw $t0 offset($sp) 目标元素地址存到栈帧
-            int offset = mipsBuilder.addValueToCurRecord(gepInst);
-            SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(swInst);
+            if (gepInst.notInReg()) {   // 若gep结果即目标元素地址未分配寄存器
+                // la $t0 arrayLabel($t1) 目标元素地址存到t0
+                LaInst laInst = new LaInst(Reg.t0, globalArray.getName().substring(1), Reg.t1);
+                mipsBuilder.addAsm(laInst);
+                // sw $t0 offset($sp) 目标元素地址存到栈帧
+                int offset = mipsBuilder.addValueToCurRecord(gepInst);
+                SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            } else {    // 若gep结果分配了寄存器
+                // la $toReg arrayLabel($t1)
+                Reg toReg = gepInst.getReg();
+                LaInst laInst = new LaInst(toReg, globalArray.getName().substring(1), Reg.t1);
+                mipsBuilder.addAsm(laInst);
+            }
         }
     }
 
     private void visitStoreInst(StoreInst storeInst) {
         Value from = storeInst.getFrom();
         Value to = storeInst.getTo();
+        Reg fromReg = Reg.t0;   // 默认为t0，若分配了寄存器则修改
         // 处理来源 存入t0
         if (from instanceof Constant constant) { // 要存入的是常数, li加载到t0
             // li $t0 constant
             LiInst liInst = new LiInst(Reg.t0, constant.getValue());
             mipsBuilder.addAsm(liInst);
-        } else {    // 要存入的不是常数，lw从栈帧加载到t0
-            // lw $t0 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(from);
-            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+        } else {    // 要存入的不是常数
+            if (from.notInReg()) {  // 若未分配寄存器，从栈帧加载
+                // lw $t0 offset($sp)
+                int offset = mipsBuilder.getOffsetOfValue(from);
+                LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 若已分配寄存器，从寄存器加载
+                fromReg = from.getReg();
+            }
         }
-        // 处理目标 把t0内容存入内存相应位置
+        // 处理目标 把fromReg内容存入内存相应位置
         if (to instanceof GlobalVar globalVar) {  // 如果目标是非数组全局变量
-            // sw $t0 label
+            // sw $fromReg label
             String label = globalVar.getName().substring(1);
-            SwInst swInst = new SwInst(Reg.t0, label);
+            SwInst swInst = new SwInst(fromReg, label);
             mipsBuilder.addAsm(swInst);
-        } else if (to instanceof AllocaInst allocaInst) {   // 如果目标是非数组局部变量
-            // sw $t0 offset($sp)
+        } else if (to instanceof AllocaInst allocaInst) {   // 如果目标是非数组局部变量 // 只有不做消除phi才会出现其alloc，因此不用考虑寄存器
+            // sw $fromReg offset($sp)
             int offset = mipsBuilder.getOffsetOfValue(allocaInst);
-            SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
+            SwInst swInst = new SwInst(fromReg, offset, Reg.sp);
             mipsBuilder.addAsm(swInst);
         } else if (to instanceof GEPInst gepInst) { // 如果目标是数组元素 包括全局数组、局部数组、参数数组元素 与load相对应，也要存两次 第一次把地址存入$t1 第二次把数据存入地址
-            // lw $t1 offset($sp) 取出目标元素内存地址，存到t1
-            int offset = mipsBuilder.getOffsetOfValue(gepInst);
-            LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
-            // sw $t0 0($t1) 存入目标元素
-            SwInst swInst = new SwInst(Reg.t0, 0, Reg.t1);
-            mipsBuilder.addAsm(swInst);
+            if (gepInst.notInReg()) {   // 若目标元素地址在内存
+                // lw $t1 offset($sp) 取出目标元素内存地址，存到t1
+                int offset = mipsBuilder.getOffsetOfValue(gepInst);
+                LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+                // sw $fromReg 0($t1) 存入目标元素
+                SwInst swInst = new SwInst(fromReg, 0, Reg.t1);
+                mipsBuilder.addAsm(swInst);
+            } else {    // 若目标元素地址在寄存器
+                Reg gepReg = gepInst.getReg();
+                // sw $fromReg 0($gepReg) 存入目标元素
+                SwInst swInst = new SwInst(fromReg, 0, gepReg);
+                mipsBuilder.addAsm(swInst);
+            }
         }
     }
 
     private void visitLoadInst(LoadInst loadInst) {
+        Reg toReg;  // 保存加载出来的数据的寄存器
+        if (loadInst.inReg()) {
+            toReg = loadInst.getReg();
+        } else {
+            toReg = Reg.t0;
+        }
         // 取出load源
         if (loadInst.getPointer() instanceof GlobalVar globalVar) {   // 如果数据源是全局变量
-            // lw $t0 label
-            LwInst lwInst = new LwInst(Reg.t0, globalVar.getName().substring(1));
+            // lw $toReg label
+            LwInst lwInst = new LwInst(toReg, globalVar.getName().substring(1));
             mipsBuilder.addAsm(lwInst);
         } else {    // 如果数据源不是全局变量
-            // lw $t0 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(loadInst.getPointer());   // 从活动记录中查询栈帧偏移量
-            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+            // lw $toReg offset($sp)
+            if (loadInst.getPointer().notInReg()) { // 若数据源不在寄存器
+                int offset = mipsBuilder.getOffsetOfValue(loadInst.getPointer());   // 从活动记录中查询栈帧偏移量
+                LwInst lwInst = new LwInst(toReg, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 若数据源在寄存器
+                // move $toReg $fromReg
+                Reg fromReg = loadInst.getPointer().getReg();
+                MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, fromReg);
+                mipsBuilder.addAsm(moveMIPSInst);
+            }
             if (loadInst.getPointer() instanceof GEPInst) { // 如果load源是gep指令，还需要再取一次，因为栈帧中存的是元素地址，还需要从元素地址中取出元素的值
-                // lw $t0 0($t0)
-                LwInst lwInst1 = new LwInst(Reg.t0, 0, Reg.t0);
+                // lw $toReg 0($toReg)
+                LwInst lwInst1 = new LwInst(toReg, 0, toReg);
                 mipsBuilder.addAsm(lwInst1);
             }
         }
-        // sw $t0 offset1($sp)  存入load目标
-        int offset1 = mipsBuilder.addValueToCurRecord(loadInst);
-        SwInst swInst = new SwInst(Reg.t0, offset1, Reg.sp);
-        mipsBuilder.addAsm(swInst);
+        if (loadInst.notInReg()) {  // 若加载目标未分配寄存器，存到栈帧
+            // sw $toReg offset1($sp)  存入load目标
+            int offset1 = mipsBuilder.addValueToCurRecord(loadInst);
+            SwInst swInst = new SwInst(toReg, offset1, Reg.sp);
+            mipsBuilder.addAsm(swInst);
+        }
     }
 
     private void visitCallInst(CallInst callInst) {
         if (!callInst.getTargetFunc().isLib()) {    // 不是库函数
-            /* 第一步 保存ra和sp */
+            /* 第一步 保存活跃寄存器、ra和sp */
+            ArrayList<Reg> activeRegs = callInst.getActiveRegs();
+            for (Reg reg : activeRegs) {
+                // sw $reg regOffset($sp)
+                int regOffset = mipsBuilder.addRegToCurRecord(reg);
+                SwInst swInst = new SwInst(reg, regOffset, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            }
             // sw $ra raOffset($sp)
             int raOffset = mipsBuilder.addRegToCurRecord(Reg.ra);
             SwInst swInst = new SwInst(Reg.ra, raOffset, Reg.sp);
@@ -275,19 +354,24 @@ public class MIPSGenerator {
             ArrayList<Param> params = callInst.getTargetFunc().getParams();
             for (int i = 0; i < params.size(); i++) {
                 Value value = callInst.getArgs().get(i);
+                Reg valueReg = Reg.t0;  // 默认为t0，若在寄存器内再修改
                 if (value instanceof Constant constant) {    // 如果实参是常数
                     // li $t0 constant
                     LiInst liInst = new LiInst(Reg.t0, constant.getValue());
                     mipsBuilder.addAsm(liInst);
                 } else {    // 如果实参不是常数
-                    // lw $t0 offset($sp)
-                    int offset = mipsBuilder.getRecordByFuncName(callerName).getOffsetOfValue(value); // 在调用者函数中查找实参偏移量
-                    LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
+                    if (value.notInReg()) { // 如果实参不在寄存器中
+                        // lw $t0 offset($sp)
+                        int offset = mipsBuilder.getRecordByFuncName(callerName).getOffsetOfValue(value); // 在调用者函数中查找实参偏移量
+                        LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                        mipsBuilder.addAsm(lwInst);
+                    } else {    // 如果实参在寄存器中
+                        valueReg = value.getReg();
+                    }
                 }
-                // sw $t0 (callerOffset+argOffset)($sp) // 把实参存入被调函数的栈帧 （虽然这里lw和sw的是实参，但被调函数record中之前已经存入的是被调函数的形参，而不是调用者函数的实参）
+                // sw $valueReg (callerOffset+argOffset)($sp) // 把实参存入被调函数的栈帧 （虽然这里lw和sw的是实参，但被调函数record中之前已经存入的是被调函数的形参，而不是调用者函数的实参）
                 int argOffset = mipsBuilder.getRecordByFuncName(calleeName).getOffsetOfValue(params.get(i));    // 查询形参的offset
-                SwInst swInst2 = new SwInst(Reg.t0, callerOffset + argOffset, Reg.sp);
+                SwInst swInst2 = new SwInst(valueReg, callerOffset + argOffset, Reg.sp);
                 mipsBuilder.addAsm(swInst2);
             }
             // addiu $sp $sp callerOffset 重设sp，使其0地址为首个实参地址，做好调用函数的准备
@@ -297,18 +381,31 @@ public class MIPSGenerator {
             JalInst jalInst = new JalInst(calleeName.substring(1));
             mipsBuilder.addAsm(jalInst);
 
-            /* 第三步 恢复sp和ra */
-            // lw $sp 0($sp) 恢复sp
+            /* 第三步 恢复sp、ra和活跃寄存器 */
+            // lw $sp 4($sp) 恢复sp
             LwInst lwInst = new LwInst(Reg.sp, 4, Reg.sp);
             mipsBuilder.addAsm(lwInst);
             // lw $ra raOffset($sp) 恢复ra
             LwInst lwInst1 = new LwInst(Reg.ra, raOffset, Reg.sp);
             mipsBuilder.addAsm(lwInst1);
+            // lw $reg regOffset($sp) 恢复活跃寄存器
+            for (Reg reg : activeRegs) {
+                int regOffset = mipsBuilder.getOffsetOfReg(reg);
+                LwInst lwInst2 = new LwInst(reg, regOffset, Reg.sp);
+                mipsBuilder.addAsm(lwInst2);
+            }
             if (callInst.getName() != null) {   // 如果调用的函数有返回值
-                // sw $v0 retOffset($sp)
-                int retOffset = mipsBuilder.addValueToCurRecord(callInst);
-                SwInst swInst2 = new SwInst(Reg.v0, retOffset, Reg.sp);
-                mipsBuilder.addAsm(swInst2);
+                if (callInst.notInReg()) {  // 若没有分配寄存器，加载到栈帧
+                    // sw $v0 retOffset($sp)
+                    int retOffset = mipsBuilder.addValueToCurRecord(callInst);
+                    SwInst swInst2 = new SwInst(Reg.v0, retOffset, Reg.sp);
+                    mipsBuilder.addAsm(swInst2);
+                } else {    // 若分配了寄存器，加载到寄存器
+                    // move $toReg $v0
+                    Reg toReg = callInst.getReg();
+                    MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, Reg.v0);
+                    mipsBuilder.addAsm(moveMIPSInst);
+                }
             }
         } else {    // 库函数
             Function function = callInst.getTargetFunc();
@@ -319,10 +416,17 @@ public class MIPSGenerator {
                 // syscall
                 SyscallInst syscallInst = new SyscallInst();
                 mipsBuilder.addAsm(syscallInst);
-                // sw $v0 offset($sp) 保存到栈帧
-                int offset = mipsBuilder.addValueToCurRecord(callInst);
-                SwInst swInst = new SwInst(Reg.v0, offset, Reg.sp);
-                mipsBuilder.addAsm(swInst);
+                if (callInst.notInReg()) {  // 若没有分配寄存器，加载到栈帧
+                    // sw $v0 offset($sp) 保存到栈帧
+                    int offset = mipsBuilder.addValueToCurRecord(callInst);
+                    SwInst swInst = new SwInst(Reg.v0, offset, Reg.sp);
+                    mipsBuilder.addAsm(swInst);
+                } else {    // 若分配了寄存器，加载到寄存器
+                    // move $toReg $v0
+                    Reg toReg = callInst.getReg();
+                    MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, Reg.v0);
+                    mipsBuilder.addAsm(moveMIPSInst);
+                }
             } else if (function.getName().equals("@putint")) {
                 Value arg = callInst.getArgs().get(0);
                 if (arg instanceof Constant constant) {  // 常数
@@ -330,10 +434,17 @@ public class MIPSGenerator {
                     LiInst liInst = new LiInst(Reg.a0, constant.getValue());
                     mipsBuilder.addAsm(liInst);
                 } else {    // 不是常数
-                    // lw $a0 offset($sp)
-                    int offset = mipsBuilder.getOffsetOfValue(arg);
-                    LwInst lwInst = new LwInst(Reg.a0, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
+                    if (arg.notInReg()) {   // 若实参不在寄存器中，从栈帧加载
+                        // lw $a0 offset($sp)
+                        int offset = mipsBuilder.getOffsetOfValue(arg);
+                        LwInst lwInst = new LwInst(Reg.a0, offset, Reg.sp);
+                        mipsBuilder.addAsm(lwInst);
+                    } else {    // 若实参在寄存器中，从寄存器加载
+                        // move $a0 $argReg
+                        Reg argReg = arg.getReg();
+                        MoveMIPSInst moveMIPSInst = new MoveMIPSInst(Reg.a0, argReg);
+                        mipsBuilder.addAsm(moveMIPSInst);
+                    }
                 }
                 // li $v0 1 打印整数
                 LiInst liInst = new LiInst(Reg.v0, 1);
@@ -342,10 +453,18 @@ public class MIPSGenerator {
                 SyscallInst syscallInst = new SyscallInst();
                 mipsBuilder.addAsm(syscallInst);
             } else if (function.getName().equals("@putstr")) {
-                // lw $a0 offset($sp)
-                int offset = mipsBuilder.getOffsetOfValue(callInst.getArgs().get(0));
-                LwInst lwInst = new LwInst(Reg.a0, offset, Reg.sp);
-                mipsBuilder.addAsm(lwInst);
+                Value arg = callInst.getArgs().get(0);
+                if (arg.notInReg()) {   // 若字符串地址不在寄存器
+                    // lw $a0 offset($sp)
+                    int offset = mipsBuilder.getOffsetOfValue(arg);
+                    LwInst lwInst = new LwInst(Reg.a0, offset, Reg.sp);
+                    mipsBuilder.addAsm(lwInst);
+                } else {    // 若字符串地址在寄存器
+                    // move $a0 $argReg
+                    Reg argReg = arg.getReg();
+                    MoveMIPSInst moveMIPSInst = new MoveMIPSInst(Reg.a0, argReg);
+                    mipsBuilder.addAsm(moveMIPSInst);
+                }
                 // li $v0 4 打印字符串
                 LiInst liInst = new LiInst(Reg.v0, 4);
                 mipsBuilder.addAsm(liInst);
@@ -357,19 +476,27 @@ public class MIPSGenerator {
     }
 
     private void visitReturnInst(ReturnInst returnInst) {
-        if (returnInst.getValue() == null) {    // 如果无返回值
+        Value retVal = returnInst.getValue();
+        if (retVal == null) {    // 如果无返回值
             JrInst jrInst = new JrInst(Reg.ra);
             mipsBuilder.addAsm(jrInst);
         } else {    // 有返回值
-            if (returnInst.getValue() instanceof Constant constant) {    // 返回值为常数
+            if (retVal instanceof Constant constant) {    // 返回值为常数
                 // li $v0 constant
                 LiInst liInst = new LiInst(Reg.v0, constant.getValue());
                 mipsBuilder.addAsm(liInst);
             } else {    // 返回值不是常数
-                // lw $v0 offset($sp)
-                int offset = mipsBuilder.getOffsetOfValue(returnInst.getValue());
-                LwInst lwInst = new LwInst(Reg.v0, offset, Reg.sp);
-                mipsBuilder.addAsm(lwInst);
+                if (retVal.notInReg()) {    // 不在寄存器内，从栈帧加载
+                    // lw $v0 offset($sp)
+                    int offset = mipsBuilder.getOffsetOfValue(retVal);
+                    LwInst lwInst = new LwInst(Reg.v0, offset, Reg.sp);
+                    mipsBuilder.addAsm(lwInst);
+                } else {    // 在寄存器内，从寄存器加载
+                    // move $v0 $retValReg
+                    Reg retValReg = retVal.getReg();
+                    MoveMIPSInst moveMIPSInst = new MoveMIPSInst(Reg.v0, retValReg);
+                    mipsBuilder.addAsm(moveMIPSInst);
+                }
             }
             // jr $ra
             JrInst jrInst = new JrInst(Reg.ra);
@@ -383,12 +510,18 @@ public class MIPSGenerator {
     }
 
     private void visitBranchInst(BranchInst branchInst) {
-        // lw $t0 offset($sp) 获取条件，存入t0
-        int offset = mipsBuilder.getOffsetOfValue(branchInst.getCond());
-        LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-        mipsBuilder.addAsm(lwInst);
-        // beqz $t0 falseLabel 若条件为假，则跳转到假基本块
-        BeqzInst beqzInst = new BeqzInst(Reg.t0, mipsBuilder.getCurRecord().getFuncName().substring(1) + "_" + branchInst.getFalseBlock().getName());
+        Value cond = branchInst.getCond();
+        Reg condReg = Reg.t0;
+        if (cond.notInReg()) {  // cond在内存中
+            // lw $t0 offset($sp) 获取条件，存入t0
+            int offset = mipsBuilder.getOffsetOfValue(cond);
+            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+            mipsBuilder.addAsm(lwInst);
+        } else {    // cond在寄存器中
+            condReg = cond.getReg();
+        }
+        // beqz $condReg falseLabel 若条件为假，则跳转到假基本块
+        BeqzInst beqzInst = new BeqzInst(condReg, mipsBuilder.getCurRecord().getFuncName().substring(1) + "_" + branchInst.getFalseBlock().getName());
         mipsBuilder.addAsm(beqzInst);
         // j trueLabel 若条件为真，则跳转到真基本块
         JInst jInst = new JInst(mipsBuilder.getCurRecord().getFuncName().substring(1) + "_" + branchInst.getTrueBlock().getName());
@@ -396,34 +529,71 @@ public class MIPSGenerator {
     }
 
     private void visitZextInst(ZextInst zextInst) {
-        int offset = mipsBuilder.getOffsetOfValue(zextInst.getOriValue());
-        mipsBuilder.addValueWithOffsetToCurRecord(zextInst, offset);
+        Value ori = zextInst.getOriValue();
+        if (ori.notInReg() && zextInst.notInReg()) {    // ori和zext都在内存
+            int offset = mipsBuilder.getOffsetOfValue(ori);  // zext的offset是其ori的offset
+            mipsBuilder.addValueWithOffsetToCurRecord(zextInst, offset);
+        } else if (ori.inReg() && zextInst.inReg()) {   // ori和zext都在寄存器
+            // move $toReg $oriReg
+            Reg toReg = zextInst.getReg();
+            Reg oriReg = ori.getReg();
+            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, oriReg);
+            mipsBuilder.addAsm(moveMIPSInst);
+        } else if (ori.inReg() && zextInst.notInReg()) {    // ori在寄存器，zext在内存
+            // 添加zext到record
+            int offset = mipsBuilder.addValueToCurRecord(zextInst);
+            // sw $oriReg offset($sp)
+            Reg oriReg = ori.getReg();
+            SwInst swInst = new SwInst(oriReg, offset, Reg.sp);
+            mipsBuilder.addAsm(swInst);
+        } else {    // ori在内存，zext在寄存器
+            // lw $toReg offset($sp)
+            Reg toReg = zextInst.getReg();
+            int offset = mipsBuilder.getOffsetOfValue(ori);
+            LwInst lwInst = new LwInst(toReg, offset, Reg.sp);
+            mipsBuilder.addAsm(lwInst);
+        }
     }
 
     private void visitIcmpInst(IcmpInst icmpInst) {
+        Value operand1 = icmpInst.getOperand1();
+        Value operand2 = icmpInst.getOperand2();
+        Reg op1Reg = Reg.t0;    // 操作数1的寄存器，默认为t0，若已分配则需修改
+        Reg op2Reg = Reg.t1;    // 操作数2的寄存器，默认为t1，若已分配则需修改
+        Reg toReg = Reg.t0;     // 保存结果的寄存器
         // 获取操作数1
-        if (icmpInst.getOperand1() instanceof Constant constant) {
+        if (operand1 instanceof Constant constant) {    // 常数直接li
             // li $t0 constant
             LiInst liInst = new LiInst(Reg.t0, constant.getValue());
             mipsBuilder.addAsm(liInst);
         } else {
-            // lw $t0 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(icmpInst.getOperand1());
-            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+            if (operand1.notInReg()) {  // 不在寄存器中，从内存加载
+                // lw $t0 offset($sp)
+//                if (mipsBuilder.isValueNotInCurRecord(operand1)) {
+//                    System.out.println(icmpInst);
+//                }
+                int offset = mipsBuilder.getOffsetOfValue(operand1);
+                LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 在寄存器中，修改其所在寄存器
+                op1Reg = operand1.getReg();
+            }
         }
         // 获取操作数2
-        if (icmpInst.getOperand2() instanceof Constant constant) {
+        if (operand2 instanceof Constant constant) {    // 常数直接li
             // li $t1 constant
             LiInst liInst = new LiInst(Reg.t1, constant.getValue());
             mipsBuilder.addAsm(liInst);
         } else {
-            // lw $t1 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(icmpInst.getOperand2());
-            LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+            if (operand2.notInReg()) {  // 不在寄存器中，从内存加载
+                // lw $t1 offset($sp)
+                int offset = mipsBuilder.getOffsetOfValue(operand2);
+                LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 在寄存器中，修改其所在寄存器
+                op2Reg = operand2.getReg();
+            }
         }
-        // opcode $t0 $t0 $t1
         Opcode opcode;
         switch (icmpInst.getIcmpKind()) {
             case eq -> opcode = Opcode.seq;
@@ -434,79 +604,164 @@ public class MIPSGenerator {
             case sle -> opcode = Opcode.sle;
             default -> opcode = null;
         }
-        SetCmpInst setCmpInst = new SetCmpInst(opcode, Reg.t0, Reg.t0, Reg.t1);
+        if (icmpInst.inReg()) { // 若结果分配了寄存器，存到寄存器
+            toReg = icmpInst.getReg();
+        }
+        // sxx $toReg $op1Reg $op2Reg
+        SetCmpInst setCmpInst = new SetCmpInst(opcode, toReg, op1Reg, op2Reg);
         mipsBuilder.addAsm(setCmpInst);
-        // 添加到record
-        int resOffset = mipsBuilder.addValueToCurRecord(icmpInst);
-        // sw $t0 resOffset($sp)
-        SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
-        mipsBuilder.addAsm(swInst);
+        if (icmpInst.notInReg()) {  // 若结果未分配寄存器，存到内存
+            // 添加到record
+            int resOffset = mipsBuilder.addValueToCurRecord(icmpInst);
+            // sw $t0 resOffset($sp)
+            SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
+            mipsBuilder.addAsm(swInst);
+        }
     }
 
     private void visitBinaryInst(BinaryInst binaryInst) {
+        Value operand1 = binaryInst.getOperand1();
+        Value operand2 = binaryInst.getOperand2();
+        Reg op1Reg = Reg.t0;   // 默认为t0，若已分配寄存器再修改
+        Reg op2Reg = Reg.t1;   // 默认为t1，若已分配寄存器再修改
+        Reg toReg = Reg.t0;
         // 获取操作数1
-        if (binaryInst.getOperand1() instanceof Constant constant) {
+        if (operand1 instanceof Constant constant) {
             // li $t0 constant
             LiInst liInst = new LiInst(Reg.t0, constant.getValue());
             mipsBuilder.addAsm(liInst);
         } else {
-            // lw $t0 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(binaryInst.getOperand1());
-            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+            if (operand1.notInReg()) {   // 未分配寄存器，从内存中取
+                // lw $t0 offset($sp)
+                int offset = mipsBuilder.getOffsetOfValue(operand1);
+                LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 已分配寄存器，从寄存器中取
+                op1Reg = operand1.getReg();
+            }
         }
         // 获取操作数2
-        if (binaryInst.getOperand2() instanceof Constant constant) {
+        if (operand2 instanceof Constant constant) {
             // li $t1 constant
             LiInst liInst = new LiInst(Reg.t1, constant.getValue());
             mipsBuilder.addAsm(liInst);
         } else {
-            // lw $t1 offset($sp)
-            int offset = mipsBuilder.getOffsetOfValue(binaryInst.getOperand2());
-            LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
-            mipsBuilder.addAsm(lwInst);
+            if (operand2.notInReg()) {   // 未分配寄存器，从内存中取
+                // lw $t1 offset($sp)
+                int offset = mipsBuilder.getOffsetOfValue(operand2);
+                LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            } else {    // 已分配寄存器，从寄存器中取
+                op2Reg = operand2.getReg();
+            }
         }
-        // 创建指令 运算结果保存到t0
+        // 创建指令 运算结果保存到toReg
+        if (binaryInst.inReg()) { // 已为结果分配寄存器，保存到该寄存器
+            toReg = binaryInst.getReg();
+        }
         switch (binaryInst.getOpcode()) {
             case add -> {
-                // addu $t0 $t0 $t1
-                AdduInst adduInst = new AdduInst(Reg.t0, Reg.t0, Reg.t1);
+                // addu $toReg $op1Reg $op2Reg
+                AdduInst adduInst = new AdduInst(toReg, op1Reg, op2Reg);
                 mipsBuilder.addAsm(adduInst);
             }
             case sub -> {
-                // subu $t0 $t0 $t1
-                SubuInst subuInst = new SubuInst(Reg.t0, Reg.t0, Reg.t1);
+                // subu $toReg $op1Reg $op2Reg
+                SubuInst subuInst = new SubuInst(toReg, op1Reg, op2Reg);
                 mipsBuilder.addAsm(subuInst);
             }
             case mul -> {
-                // mult $t0 $t1
-                MultInst multInst = new MultInst(Reg.t0, Reg.t1);
+                // mult $op1Reg $op2Reg
+                MultInst multInst = new MultInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(multInst);
-                // mflo $t0
-                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, Reg.t0);
+                // mflo $toReg
+                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
                 mipsBuilder.addAsm(mfloInst);
             }
             case sdiv -> {
-                // div $t0 $t1
-                DivInst divInst = new DivInst(Reg.t0, Reg.t1);
+                // div $op1Reg $op2Reg
+                DivInst divInst = new DivInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(divInst);
-                // mflo $t0
-                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, Reg.t0);
+                // mflo $toReg
+                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
                 mipsBuilder.addAsm(mfloInst);
             }
             case srem -> {
-                // div $t0 $t1
-                DivInst divInst = new DivInst(Reg.t0, Reg.t1);
+                // div $op1Reg $op2Reg
+                DivInst divInst = new DivInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(divInst);
-                // mfhi $t0
-                MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, Reg.t0);
+                // mfhi $toReg
+                MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, toReg);
                 mipsBuilder.addAsm(mfhiInst);
             }
         }
-        // 添加到record
-        int resOffset = mipsBuilder.addValueToCurRecord(binaryInst);
-        // sw $t0 resOffset($sp)
-        SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
-        mipsBuilder.addAsm(swInst);
+        if (binaryInst.notInReg()) { // 若未分配寄存器，将结果保存到栈帧
+            // 添加到record
+            int resOffset = mipsBuilder.addValueToCurRecord(binaryInst);
+            // sw $t0 resOffset($sp)
+            SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
+            mipsBuilder.addAsm(swInst);
+        }
+    }
+
+    private void visitMoveInst(MoveInst moveInst) {
+        Value from = moveInst.getFrom();
+        Value to = moveInst.getTo();
+        if (from.inReg() && to.inReg()) {   // from和to都在寄存器
+            // move $toReg $fromReg
+            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(to.getReg(), from.getReg());
+            mipsBuilder.addAsm(moveMIPSInst);
+        } else if (from.notInReg() && to.inReg()) { // from不在寄存器，to在寄存器
+            if (from instanceof Constant constant) { // from是常数
+                // li $toReg constant
+                LiInst liInst = new LiInst(to.getReg(), constant.getValue());
+                mipsBuilder.addAsm(liInst);
+            } else {
+                // lw $toReg offset($sp)
+                if (mipsBuilder.isValueNotInCurRecord(from)) {
+                    mipsBuilder.addValueToCurRecord(from);
+                }
+                int offset = mipsBuilder.getOffsetOfValue(from);
+                LwInst lwInst = new LwInst(to.getReg(), offset, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+            }
+        } else if (from.notInReg() && to.notInReg()) {  // from和to都不在寄存器
+            if (from instanceof Constant constant) {
+                // li $t0 constant
+                LiInst liInst = new LiInst(Reg.t0, constant.getValue());
+                mipsBuilder.addAsm(liInst);
+                // sw $t0 offset($sp)
+                if (mipsBuilder.isValueNotInCurRecord(to)) {
+                    mipsBuilder.addValueToCurRecord(to);
+                }
+                int offset = mipsBuilder.getOffsetOfValue(to);
+                SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            } else {
+                // lw $t0 offset0($sp)
+                if (mipsBuilder.isValueNotInCurRecord(from)) {
+                    mipsBuilder.addValueToCurRecord(from);
+                }
+                int offset0 = mipsBuilder.getOffsetOfValue(from);
+                LwInst lwInst = new LwInst(Reg.t0, offset0, Reg.sp);
+                mipsBuilder.addAsm(lwInst);
+                // sw $t0 offset1($sp)
+                if (mipsBuilder.isValueNotInCurRecord(to)) {
+                    mipsBuilder.addValueToCurRecord(to);
+                }
+                int offset1 = mipsBuilder.getOffsetOfValue(to);
+                SwInst swInst = new SwInst(Reg.t0, offset1, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            }
+        } else {    // from在寄存器，to不在寄存器
+            // sw $fromReg offset($sp)
+            Reg fromReg = from.getReg();
+            if (mipsBuilder.isValueNotInCurRecord(to)) {
+                mipsBuilder.addValueToCurRecord(to);
+            }
+            int offset = mipsBuilder.getOffsetOfValue(to);
+            SwInst swInst = new SwInst(fromReg, offset, Reg.sp);
+            mipsBuilder.addAsm(swInst);
+        }
     }
 }

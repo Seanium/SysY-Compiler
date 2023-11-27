@@ -5,9 +5,11 @@ import midend.ir.Function;
 import midend.ir.Module;
 import midend.ir.Value;
 import midend.ir.inst.Inst;
+import midend.ir.inst.MoveInst;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 public class LivenessAnalyze implements Pass {
     private final Module module;
@@ -22,7 +24,6 @@ public class LivenessAnalyze implements Pass {
             iterativeLivenessAnalyze(function);
             setInstId(function);
             buildLiveRange(function);
-//            printLivenessInfo(function);
         }
     }
 
@@ -39,8 +40,14 @@ public class LivenessAnalyze implements Pass {
             ArrayList<Inst> insts = basicBlock.getInstructions();
             for (int j = insts.size() - 1; j >= 0; j--) {
                 Inst inst = insts.get(j);
-                inst.getLiveDef().add(inst);
-                inst.getLiveUse().addAll(inst.getVarOperandList());
+                // 定义每条指令的liveDef
+                if (!(inst instanceof MoveInst)) { // move没有产生def
+                    inst.getLiveDef().add(inst);
+                }
+                // 定义每条指令的liveUse
+                inst.getLiveUse().addAll(inst.getVarOperandList()); // 对于move而言，添加的是非constant的from以及to
+                // 函数的变量列表
+                function.getVars().addAll(inst.getVarOperandList());
                 if (j != insts.size() - 1) {    // 如果不是基本块最后一条指令
                     Inst sucInst = insts.get(j + 1);
                     inst.getLiveOut().addAll(sucInst.getLiveIn());  // 当前指令的liveOut是后继指令的liveOut 块内指令的后继是唯一的
@@ -49,7 +56,7 @@ public class LivenessAnalyze implements Pass {
                     inst.getLiveOut().addAll(sucInst.getLiveIn());
                 }
                 // in[S] = gen[S] ∪ (out[S] - kill[S]) = use[S] ∪ (out[S] - def[S])
-                HashSet<Value> temp = new HashSet<>(inst.getLiveOut());  // 避免就地修改
+                HashSet<Value> temp = new LinkedHashSet<>(inst.getLiveOut());  // 避免就地修改
                 temp.removeAll(inst.getLiveDef());
                 temp.addAll(inst.getLiveUse());
                 inst.getLiveIn().addAll(temp);
@@ -105,35 +112,6 @@ public class LivenessAnalyze implements Pass {
                 for (Value value : inst.getLiveIn()) {
                     value.getLiveRange().add(inst);
                 }
-            }
-        }
-    }
-
-    /***
-     * 打印每条指令的liveness信息。
-     */
-    private void printLivenessInfo(Function function) {
-        System.out.println(function.getName());
-        for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            System.out.println(basicBlock.getName());
-            for (Inst inst : basicBlock.getInstructions()) {
-                // liveIn
-                StringBuilder liveIn = new StringBuilder();
-                liveIn.append("[liveIn] ");
-                for (Value value : inst.getLiveIn()) {
-                    liveIn.append(value.getName()).append("\t");
-                }
-                System.out.println(liveIn);
-                // inst
-                System.out.println(inst.getId() + ": " + inst);
-                // liveOut
-                StringBuilder liveOut = new StringBuilder();
-                liveOut.append("[liveOut] ");
-                for (Value value : inst.getLiveOut()) {
-                    liveOut.append(value.getName()).append("\t");
-                }
-                System.out.println(liveOut);
-                System.out.println();
             }
         }
     }

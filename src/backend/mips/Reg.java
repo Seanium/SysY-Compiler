@@ -10,7 +10,8 @@ public enum Reg {
     t8, t9,
     k0, k1,
     gp, sp, fp,
-    ra;
+    ra,
+    NOREG;  // 若变量不分配寄存器，则value.reg设置为此值
 
     @Override
     public String toString() {

@@ -8,5 +8,6 @@ public enum Opcode {
     sw,
     li, lw, la,
     seq, sne, sgt, sge, slt, sle,
-    syscall
+    syscall,
+    move
 }

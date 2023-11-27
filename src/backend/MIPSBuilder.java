@@ -13,22 +13,18 @@ import midend.ir.Value;
 import midend.ir.inst.AllocaInst;
 
 public class MIPSBuilder {
-    private static MIPSBuilder instance;
-
-    public static MIPSBuilder getInstance() {
-        if (instance == null) {
-            instance = new MIPSBuilder();
-        }
-        return instance;
-    }
 
     private final MIPSFile mipsFile;
     private final RecordManager recordManager;
     private Record curRecord;   // 当前所在的函数记录
 
-    private MIPSBuilder() {
-        this.mipsFile = MIPSFile.getInstance();
-        this.recordManager = RecordManager.getInstance();
+    public MIPSBuilder() {
+        this.mipsFile = new MIPSFile();
+        this.recordManager = new RecordManager();
+    }
+
+    public MIPSFile getMipsFile() {
+        return mipsFile;
     }
 
     /***
@@ -73,6 +69,10 @@ public class MIPSBuilder {
      */
     public int getOffsetOfValue(Value value) {
         return curRecord.getOffsetOfValue(value);
+    }
+
+    public boolean isValueNotInCurRecord(Value value) {
+        return !curRecord.getValueOffsetMap().containsKey(value);
     }
 
     /***

@@ -1,30 +1,34 @@
 package midend.ir.inst;
 
+import backend.mips.Reg;
 import midend.ir.BasicBlock;
 import midend.ir.User;
 import midend.ir.Value;
 import midend.ir.type.Type;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 
 public class Inst extends User {
     protected Opcode opcode;
     private BasicBlock parentBasicBlock;
     private int id;
-    private final HashSet<Value> liveDef;
-    private final HashSet<Value> liveUse;
-    private final HashSet<Value> liveIn;
-    private final HashSet<Value> liveOut;
+    private final LinkedHashSet<Value> liveDef;
+    private final LinkedHashSet<Value> liveUse;
+    private final LinkedHashSet<Value> liveIn;
+    private final LinkedHashSet<Value> liveOut;
+    private final ArrayList<Reg> activeRegs;
 
     public Inst(Type type, String name, Opcode opcode) {
         super(type, name);
         this.opcode = opcode;
         this.parentBasicBlock = null;
         this.id = 0;
-        this.liveDef = new HashSet<>();
-        this.liveUse = new HashSet<>();
-        this.liveIn = new HashSet<>();
-        this.liveOut = new HashSet<>();
+        this.liveDef = new LinkedHashSet<>();
+        this.liveUse = new LinkedHashSet<>();
+        this.liveIn = new LinkedHashSet<>();
+        this.liveOut = new LinkedHashSet<>();
+        this.activeRegs = new ArrayList<>();
     }
 
     public int getId() {
@@ -47,19 +51,23 @@ public class Inst extends User {
         return opcode;
     }
 
-    public HashSet<Value> getLiveDef() {
+    public LinkedHashSet<Value> getLiveDef() {
         return liveDef;
     }
 
-    public HashSet<Value> getLiveUse() {
+    public LinkedHashSet<Value> getLiveUse() {
         return liveUse;
     }
 
-    public HashSet<Value> getLiveIn() {
+    public LinkedHashSet<Value> getLiveIn() {
         return liveIn;
     }
 
-    public HashSet<Value> getLiveOut() {
+    public LinkedHashSet<Value> getLiveOut() {
         return liveOut;
+    }
+
+    public ArrayList<Reg> getActiveRegs() {
+        return activeRegs;
     }
 }

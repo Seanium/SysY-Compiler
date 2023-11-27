@@ -3,18 +3,10 @@ package backend.mips.record;
 import java.util.HashMap;
 
 public class RecordManager {
-    private static RecordManager instance;
-
-    public static RecordManager getInstance() {
-        if (instance == null) {
-            instance = new RecordManager();
-        }
-        return instance;
-    }
 
     private final HashMap<String, Record> records;
 
-    private RecordManager() {
+    public RecordManager() {
         this.records = new HashMap<>();
     }
 

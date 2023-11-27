@@ -82,6 +82,10 @@ public class Record {
         return curOffset + 4;
     }
 
+    public HashMap<Value, Integer> getValueOffsetMap() {
+        return valueOffsetMap;
+    }
+
     public int getCurOffset() {
         return curOffset;
     }

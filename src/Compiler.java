@@ -7,19 +7,23 @@ import frontend.node.CompUnitNode;
 import midend.IRGenerator;
 import midend.IROptimizer;
 import midend.ir.Module;
+import utils.Config;
 import utils.FileIO;
 
 public class Compiler {
 
     public static void main(String[] args) {
+//        Config.setMode(Config.Mode.DEBUG);
+        Config.setMode(Config.Mode.RELEASE);
+
 //        1.词法分析
-//        String source = FileIOUtils.read(args[0]);  // 从命令行参数获取源文件名
+//        String source = FileIO.read(args[0]);  // 从命令行参数获取源文件名
         String source = FileIO.read("testfile.txt");
         Lexer lexer = Lexer.getInstance(source);
 //        输出
 //        String tokens = lexer.TokensToString(lexer.tokenize());
 //        System.out.println(tokens);
-//        FileIOUtils.write("output.txt", tokens);
+//        FileIO.write("output.txt", tokens);
 
 //        2.语法分析
         Parser parser = Parser.getInstance(lexer);
@@ -27,7 +31,7 @@ public class Compiler {
 //        输出
 //        String parseResult = compUnitNode.toString();
 //        System.out.println(parseResult);
-//        FileIOUtils.write("output.txt", parseResult);
+//        FileIO.write("output.txt", parseResult);
 
 //        3. 错误处理
         String errorListStr = ErrorList.getInstance().toString();
@@ -44,22 +48,27 @@ public class Compiler {
 //        System.out.println(module);
         FileIO.write("llvm_ir_raw.txt", module.toString());
 
-////        5.中间代码优化
-//        IROptimizer irOptimizer = IROptimizer.getInstance();
-//        irOptimizer.runPasses();
-//        FileIO.write("llvm_ir_move.txt", module.toString());
-
-//        6.目标代码生成 (MIPS)
-        MIPSGenerator mipsGenerator = MIPSGenerator.getInstance();
+        MIPSGenerator mipsGenerator;
+        MIPSFile mipsFile;
+//        5.目标代码生成 (MIPS)(无优化)
+        mipsGenerator = new MIPSGenerator();
         mipsGenerator.visitModule(Module.getInstance());
 //        输出
-        MIPSFile mipsFile = MIPSFile.getInstance();
+        mipsFile = mipsGenerator.getCurMIPSFile();
 //        System.out.println(mipsFile);
-        FileIO.write("mips.txt", mipsFile.toString());
+        FileIO.write("mips_raw.txt", mipsFile.toString());
 
-        //        5.中间代码优化
+//        6.代码优化
         IROptimizer irOptimizer = IROptimizer.getInstance();
         irOptimizer.runPasses();
         FileIO.write("llvm_ir_move.txt", module.toString());
+
+//        7.目标代码生成 (MIPS)(优化)
+        mipsGenerator = new MIPSGenerator();
+        mipsGenerator.visitModule(Module.getInstance());
+//        输出
+        mipsFile = mipsGenerator.getCurMIPSFile();
+//        System.out.println(mipsFile);
+        FileIO.write("mips.txt", mipsFile.toString());
     }
 }

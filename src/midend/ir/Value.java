@@ -1,15 +1,21 @@
 package midend.ir;
 
+import backend.mips.Reg;
 import midend.ir.inst.Inst;
 import midend.ir.type.Type;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 public class Value {
     protected final Type type;
     protected String name;
-    private final HashSet<Inst> liveRange;
+    private final LinkedHashSet<Inst> liveRange;
+    /***
+     * 该变量分配到的寄存器。
+     * 为null表示尚未分配，为Reg.NOREG表示已经决定不分配寄存器，为Reg.寄存器表示分配对应寄存器。
+     */
+    private Reg reg;
     /***
      * 记录谁使用了该value。
      */
@@ -19,7 +25,30 @@ public class Value {
         this.type = type;
         this.name = name;
         this.userList = new ArrayList<>();
-        this.liveRange = new HashSet<>();
+        this.liveRange = new LinkedHashSet<>();
+        this.reg = null;
+    }
+
+    public Reg getReg() {
+        return reg;
+    }
+
+    public void setReg(Reg reg) {
+        this.reg = reg;
+    }
+
+    /***
+     * 若尚未分配或决定不分配寄存器，返回真。
+     */
+    public boolean notInReg() {
+        return this.reg == null || this.reg == Reg.NOREG;
+    }
+
+    /***
+     * 若已分配到寄存器，返回真。
+     */
+    public boolean inReg() {
+        return !notInReg();
     }
 
     public Type getType() {
@@ -52,7 +81,7 @@ public class Value {
         userList.removeIf(user::equals);
     }
 
-    public HashSet<Inst> getLiveRange() {
+    public LinkedHashSet<Inst> getLiveRange() {
         return liveRange;
     }
 

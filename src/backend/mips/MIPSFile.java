@@ -3,16 +3,8 @@ package backend.mips;
 import java.util.ArrayList;
 
 public class MIPSFile {
-    private static MIPSFile instance;
 
-    public static MIPSFile getInstance() {
-        if (instance == null) {
-            instance = new MIPSFile();
-        }
-        return instance;
-    }
-
-    private MIPSFile() {
+    public MIPSFile() {
         this.data = new ArrayList<>();
         this.text = new ArrayList<>();
     }

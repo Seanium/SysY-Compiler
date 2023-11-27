@@ -3,12 +3,17 @@ package midend.ir;
 import midend.ir.type.Type;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 
 public class Function extends Value {
 
     private final ArrayList<Param> params;    // 没有形参则为无元素
     private final ArrayList<BasicBlock> basicBlocks;
     private boolean isLib;  // 是否为库函数
+    /***
+     * 该函数所有的变量。也就是要分配寄存器的value。
+     */
+    private final LinkedHashSet<Value> vars;
 
     /**
      * @param name 函数名。
@@ -19,6 +24,7 @@ public class Function extends Value {
         this.basicBlocks = new ArrayList<>();
         this.params = new ArrayList<>();
         this.isLib = false;
+        this.vars = new LinkedHashSet<>();
     }
 
     /***
@@ -50,6 +56,10 @@ public class Function extends Value {
 
     public ArrayList<Param> getParams() {
         return params;
+    }
+
+    public LinkedHashSet<Value> getVars() {
+        return vars;
     }
 
     @Override

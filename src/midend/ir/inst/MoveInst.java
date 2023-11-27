@@ -3,23 +3,22 @@ package midend.ir.inst;
 import midend.ir.Value;
 
 public class MoveInst extends Inst {
-    private final Value to;
 
     /***
      * 汇编形式：   move to from
      */
     public MoveInst(Value to, Value from) {
-        super(to.getType(), to.getName(), Opcode.move);
-        this.to = to;
+        super(to.getType(), "move " + to.getName() + " " + from.getName(), Opcode.move);
+        addOperand(to);
         addOperand(from);
     }
 
     public Value getTo() {
-        return to;
+        return operandList.get(0);
     }
 
     public Value getFrom() {
-        return operandList.get(0);
+        return operandList.get(1);
     }
 
     @Override

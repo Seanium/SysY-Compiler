@@ -29,7 +29,9 @@ public class User extends Value {
     public ArrayList<Value> getVarOperandList() {
         ArrayList<Value> varOperandList = new ArrayList<>();
         for (Value operand : operandList) {
-            if (operand instanceof Constant || operand instanceof BasicBlock || operand instanceof Function) {
+            if (operand instanceof Constant || operand instanceof BasicBlock ||
+                    operand instanceof Function || operand instanceof GlobalArray ||
+                    operand instanceof GlobalVar) {    // globalArray: 字符串
                 continue;
             }
             varOperandList.add(operand);

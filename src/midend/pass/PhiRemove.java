@@ -1,10 +1,8 @@
 package midend.pass;
 
 import midend.IRBuilder;
-import midend.ir.BasicBlock;
-import midend.ir.Function;
 import midend.ir.Module;
-import midend.ir.Value;
+import midend.ir.*;
 import midend.ir.inst.Inst;
 import midend.ir.inst.MoveInst;
 import midend.ir.inst.PhiInst;
@@ -62,7 +60,7 @@ public class PhiRemove implements Pass {
                 MoveInst moveInst0 = new MoveInst(a0phi, a0Temp);
                 B0.getBeginMoves().add(moveInst0);  // 向后继基本块添加a0 = a0Temp
                 iterator.remove();  // 删除phi指令
-                a0phi.replaceOperandOfAllUser(moveInst0);    // 把之后对a0phi的使用改为对moveInst0的使用
+                a0phi.replaceOperandOfAllUser(moveInst0.getTo());    // 把之后对a0phi的使用改为对moveInst0.to的使用
             }
         }
 //        for (BasicBlock basicBlock : basicBlocks) {
@@ -91,7 +89,7 @@ public class PhiRemove implements Pass {
     private void parallelCopy2Sequential(Function function, ArrayList<MoveInst> moves) {
         ArrayList<MoveInst> movesSeq = new ArrayList<>();
         Stack<Value> ready = new Stack<>();
-        Stack<Value> todo = new Stack<>();
+        Stack<Value> to_do = new Stack<>();
         HashMap<Value, Value> loc = new HashMap<>();
         HashMap<Value, Value> pred = new HashMap<>();
         Value n = new Value(IntegerType.i32, IRBuilder.getInstance().genLocalVarNameForFunc(function));
@@ -107,7 +105,7 @@ public class PhiRemove implements Pass {
             Value b = moveInst.getTo();
             loc.put(a, a);
             pred.put(b, a);
-            todo.push(b);
+            to_do.push(b);
         }
         for (MoveInst moveInst : moves) {
             Value b = moveInst.getTo();
@@ -115,7 +113,7 @@ public class PhiRemove implements Pass {
                 ready.push(b);
             }
         }
-        while (!todo.isEmpty()) {
+        while (!to_do.isEmpty()) {
             while (!ready.isEmpty()) {
                 Value b = ready.pop();
                 Value a = pred.get(b);
@@ -126,7 +124,7 @@ public class PhiRemove implements Pass {
                     ready.push(a);
                 }
             }
-            Value b = todo.pop();
+            Value b = to_do.pop();
             if (!b.equals(loc.get(pred.get(b)))) {
                 movesSeq.add(new MoveInst(n, b));
                 loc.put(b, n);

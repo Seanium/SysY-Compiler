@@ -17,6 +17,14 @@ public class MoveMIPSInst extends Asm {
         this.from = from;
     }
 
+    public Reg getTo() {
+        return to;
+    }
+
+    public Reg getFrom() {
+        return from;
+    }
+
     @Override
     public String toString() {
         return opcode + " " + to + " " + from;

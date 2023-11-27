@@ -74,21 +74,41 @@ public class MIPSGenerator {
         mipsBuilder.addAsm(funcLabel);
         // 进入record
         mipsBuilder.enterRecord(function.getName());
-        // 添加形参到栈空间（之后在调用方将实参store到这些空间，这里只是先在被调用函数的record开辟空间）
+        // 添加全部形参到栈空间（之后在调用方将实参store到这些空间，这里只是先在被调用函数的record开辟空间）
         ArrayList<Param> params = function.getParams();
         for (Param param : params) {
             mipsBuilder.addValueToCurRecord(param);
         }
-        // 若形参分配到寄存器，将其从内存load到寄存器中 // 该步骤在函数第一个块的标签之前
-        for (Param param : params) {
-            if (param.inReg()) {
-                // lw $reg offset($sp)
-                Reg reg = param.getReg();
-                int offset = mipsBuilder.getOffsetOfValue(param);
-                LwInst lwInst = new LwInst(reg, offset, Reg.sp);
-                mipsBuilder.addAsm(lwInst);
+        // 该步骤在函数第一个块的标签之前
+        // 若形参分配到寄存器，将其从参数寄存器$ai move到寄存器$reg(前四个参数),或从内存load到寄存器reg(第五个参数及之后)
+        // 若形参未分配到寄存器，前四个参数需要从$ai save到内存
+        for (int i = 0; i < params.size(); i++) {
+            Param param = params.get(i);
+            if (param.inReg()) {    // 若形参分配到寄存器，将其从参数寄存器$ai move到寄存器$reg(前四个参数),或从内存load到寄存器reg(第五个参数及之后)
+                if (i <= 3) {
+                    // move $reg %ai
+                    Reg reg = param.getReg();
+                    Reg ai = Reg.values()[Reg.a0.ordinal() + i];
+                    MoveMIPSInst moveMIPSInst = new MoveMIPSInst(reg, ai);
+                    mipsBuilder.addAsm(moveMIPSInst);
+                } else {
+                    // lw $reg offset($sp)
+                    Reg reg = param.getReg();
+                    int offset = mipsBuilder.getOffsetOfValue(param);
+                    LwInst lwInst = new LwInst(reg, offset, Reg.sp);
+                    mipsBuilder.addAsm(lwInst);
+                }
+            } else {    // 若形参未分配到寄存器，前四个参数需要从$ai save到内存
+                if (i <= 3) {
+                    // sw $ai offset($sp)
+                    Reg ai = Reg.values()[Reg.a0.ordinal() + i];
+                    int offset = mipsBuilder.getOffsetOfValue(param);
+                    SwInst swInst = new SwInst(ai, offset, Reg.sp);
+                    mipsBuilder.addAsm(swInst);
+                }
             }
         }
+        // 访问基本块
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
             visitBasicBlock(basicBlock);
         }
@@ -348,35 +368,54 @@ public class MIPSGenerator {
             SwInst swInst1 = new SwInst(Reg.sp, spOffset, Reg.sp);
             mipsBuilder.addAsm(swInst1);
 
-            /* 第二步 保存实参到栈帧 */
-            // 保存调用者和被调函数名
-            String callerName = mipsBuilder.getCurRecord().getFuncName();
-            String calleeName = callInst.getTargetFunc().getName();
-            // 保存调用者函数栈帧当前偏移量
+            /* 第二步 保存实参到寄存器或栈帧 */
+            String calleeName = callInst.getTargetFunc().getName(); // 被调函数名
+            // 调用者函数栈帧当前偏移量
             int callerOffset = mipsBuilder.getCurRecord().getCurOffset();
-            // 保存实参到被调函数栈帧开头
+            // 保存前四个实参到$ai寄存器，剩余的到被调函数栈帧开头
             ArrayList<Param> params = callInst.getTargetFunc().getParams();
             for (int i = 0; i < params.size(); i++) {
-                Value value = callInst.getArgs().get(i);
-                Reg valueReg = Reg.t0;  // 默认为t0，若在寄存器内再修改
-                if (value instanceof Constant constant) {    // 如果实参是常数
-                    // li $t0 constant
-                    LiInst liInst = new LiInst(Reg.t0, constant.getValue());
-                    mipsBuilder.addAsm(liInst);
-                } else {    // 如果实参不是常数
-                    if (value.notInReg()) { // 如果实参不在寄存器中
-                        // lw $t0 offset($sp)
-                        int offset = mipsBuilder.getRecordByFuncName(callerName).getOffsetOfValue(value); // 在调用者函数中查找实参偏移量
-                        LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-                        mipsBuilder.addAsm(lwInst);
-                    } else {    // 如果实参在寄存器中
-                        valueReg = value.getReg();
+                Value arg = callInst.getArgs().get(i);
+                if (i <= 3) {
+                    Reg ai = Reg.values()[Reg.a0.ordinal() + i];
+                    if (arg instanceof Constant constant) {    // 如果实参是常数
+                        // li $ai constant
+                        LiInst liInst = new LiInst(ai, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else {    // 如果实参不是常数
+                        if (arg.notInReg()) { // 如果实参不在寄存器中
+                            // lw $ai offset($sp)
+                            int offset = mipsBuilder.getOffsetOfValue(arg); // 在调用者函数中查找实参偏移量
+                            LwInst lwInst = new LwInst(ai, offset, Reg.sp);
+                            mipsBuilder.addAsm(lwInst);
+                        } else {    // 如果实参在寄存器中
+                            // move $ai $valueReg
+                            Reg valueReg = arg.getReg();
+                            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(ai, valueReg);
+                            mipsBuilder.addAsm(moveMIPSInst);
+                        }
                     }
+                } else {
+                    Reg valueReg = Reg.t0;  // 默认为t0，若在寄存器内再修改
+                    if (arg instanceof Constant constant) {    // 如果实参是常数
+                        // li $t0 constant
+                        LiInst liInst = new LiInst(Reg.t0, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else {    // 如果实参不是常数
+                        if (arg.notInReg()) { // 如果实参不在寄存器中
+                            // lw $t0 offset($sp)
+                            int offset = mipsBuilder.getOffsetOfValue(arg); // 在调用者函数中查找实参偏移量
+                            LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
+                            mipsBuilder.addAsm(lwInst);
+                        } else {    // 如果实参在寄存器中
+                            valueReg = arg.getReg();
+                        }
+                    }
+                    // sw $valueReg (callerOffset+argOffset)($sp) // 把实参存入被调函数的栈帧 （虽然这里lw和sw的是实参，但被调函数record中之前已经存入的是被调函数的形参，而不是调用者函数的实参）
+                    int argOffset = mipsBuilder.getRecordByFuncName(calleeName).getOffsetOfValue(params.get(i));    // 查询形参的offset
+                    SwInst swInst2 = new SwInst(valueReg, callerOffset + argOffset, Reg.sp);
+                    mipsBuilder.addAsm(swInst2);
                 }
-                // sw $valueReg (callerOffset+argOffset)($sp) // 把实参存入被调函数的栈帧 （虽然这里lw和sw的是实参，但被调函数record中之前已经存入的是被调函数的形参，而不是调用者函数的实参）
-                int argOffset = mipsBuilder.getRecordByFuncName(calleeName).getOffsetOfValue(params.get(i));    // 查询形参的offset
-                SwInst swInst2 = new SwInst(valueReg, callerOffset + argOffset, Reg.sp);
-                mipsBuilder.addAsm(swInst2);
             }
             // addiu $sp $sp callerOffset 重设sp，使其0地址为首个实参地址，做好调用函数的准备
             AddiuInst addiuInst = new AddiuInst(Reg.sp, Reg.sp, callerOffset);

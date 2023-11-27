@@ -50,13 +50,15 @@ public class Compiler {
 
         MIPSGenerator mipsGenerator;
         MIPSFile mipsFile;
+        if (Config.getMode() == Config.Mode.DEBUG) {
 //        5.目标代码生成 (MIPS)(无优化)
-        mipsGenerator = new MIPSGenerator();
-        mipsGenerator.visitModule(Module.getInstance());
+            mipsGenerator = new MIPSGenerator();
+            mipsGenerator.visitModule(Module.getInstance());
 //        输出
-        mipsFile = mipsGenerator.getCurMIPSFile();
+            mipsFile = mipsGenerator.getCurMIPSFile();
 //        System.out.println(mipsFile);
-        FileIO.write("mips_raw.txt", mipsFile.toString());
+            FileIO.write("mips_raw.txt", mipsFile.toString());
+        }
 
 //        6.代码优化
         IROptimizer irOptimizer = IROptimizer.getInstance();

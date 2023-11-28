@@ -10,6 +10,7 @@ import midend.ir.inst.MoveInst;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 
 public class LivenessAnalyze implements IRPass {
     private final Module module;
@@ -36,16 +37,23 @@ public class LivenessAnalyze implements IRPass {
         ArrayList<BasicBlock> basicBlocks = function.getBasicBlocks();
         for (int i = basicBlocks.size() - 1; i >= 0; i--) {
             BasicBlock basicBlock = basicBlocks.get(i);
-//            System.out.println(basicBlock.getName()); //todo 调试信息
             ArrayList<Inst> insts = basicBlock.getInstructions();
             for (int j = insts.size() - 1; j >= 0; j--) {
                 Inst inst = insts.get(j);
                 // 定义每条指令的liveDef
-                if (!(inst instanceof MoveInst)) { // move没有产生def
+                if (!(inst instanceof MoveInst moveInst)) { // 非move产生的def是这条语句本身
                     inst.getLiveDef().add(inst);
+                } // 若move的to第一次出现的语句就是这条move的to，则move产生的def为to
+                else if (Objects.equals(getMoveTargetFisrtAppearInst(function, moveInst), moveInst) && !moveInst.getTo().equals(moveInst.getFrom())) {
+                    inst.getLiveDef().add(moveInst.getTo());
                 }
                 // 定义每条指令的liveUse
-                inst.getLiveUse().addAll(inst.getVarOperandList()); // 对于move而言，添加的是非constant的from以及to
+                inst.getLiveUse().addAll(inst.getVarOperandList()); // 对于move而言，use添加的是非constant的from以及to
+                if (inst instanceof MoveInst moveInst) {    // 特别地，若move的to第一次出现的语句就是这条move的to，则在use中去掉to
+                    if (Objects.equals(getMoveTargetFisrtAppearInst(function, moveInst), moveInst) && !moveInst.getTo().equals(moveInst.getFrom())) {
+                        inst.getLiveUse().remove(moveInst.getTo());
+                    }
+                }
                 // 函数的变量列表
                 function.getVars().addAll(inst.getVarOperandList());
                 if (j != insts.size() - 1) {    // 如果不是基本块最后一条指令
@@ -114,5 +122,24 @@ public class LivenessAnalyze implements IRPass {
                 }
             }
         }
+    }
+
+    /***
+     * 找到move.to第一次出现的语句。
+     */
+    private Inst getMoveTargetFisrtAppearInst(Function function, MoveInst moveInst) {
+        for (BasicBlock basicBlock : function.getBasicBlocks()) {
+            for (Inst inst : basicBlock.getInstructions()) {
+                if (inst.equals(moveInst.getTo())) {
+                    return inst;
+                }
+                for (Value operand : inst.getVarOperandList()) {
+                    if (operand.equals(moveInst.getTo())) {
+                        return inst;
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

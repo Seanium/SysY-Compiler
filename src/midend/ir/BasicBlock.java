@@ -7,8 +7,8 @@ import midend.ir.type.OtherType;
 import java.util.ArrayList;
 
 public class BasicBlock extends Value {
-    private final Function parentFunction;
-    private final ArrayList<Inst> instructions;
+    private Function parentFunction;
+    private final ArrayList<Inst> insts;
     /***
      * CFG中，该基本块的前驱基本块列表。
      */
@@ -57,7 +57,7 @@ public class BasicBlock extends Value {
     public BasicBlock(String name, Function parentFunction) {
         super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
         this.parentFunction = parentFunction;
-        this.instructions = new ArrayList<>();
+        this.insts = new ArrayList<>();
         this.cfgPreList = new ArrayList<>();
         this.cfgSucList = new ArrayList<>();
         this.domList = new ArrayList<>();
@@ -72,10 +72,25 @@ public class BasicBlock extends Value {
     }
 
     /***
+     * 清空支配信息。
+     */
+    public void clearDomInfo() {
+        this.cfgPreList.clear();
+        this.cfgSucList.clear();
+        this.domList.clear();
+        this.domByList.clear();
+        this.strictDomList.clear();
+        this.strictDomByList.clear();
+        this.immDomList.clear();
+        this.immDomBy = null;
+        this.dfList.clear();
+    }
+
+    /***
      * 插入指令到指令列表尾部。
      */
     public void addInstAtLast(Inst inst) {
-        instructions.add(inst);
+        insts.add(inst);
         inst.setParentBasicBlock(this);
     }
 
@@ -83,33 +98,33 @@ public class BasicBlock extends Value {
      * 插入指令到指令列表头部。
      */
     public void addInstAtFirst(Inst inst) {
-        instructions.add(0, inst);
+        insts.add(0, inst);
         inst.setParentBasicBlock(this);
     }
 
     public void addInsts(int index, ArrayList<? extends Inst> insts) {
-        instructions.addAll(index, insts);
+        this.insts.addAll(index, insts);
         for (Inst inst : insts) {
             inst.setParentBasicBlock(this);
         }
     }
 
     /***
-     * 禁止通过此方法向基本块中插入指令。(防止忘记设置指令的父基本块)
-     * 如需插入，请调用IRBuilder中相关方法，或addInstAtFisrt()、addInsts()方法。
+     * 获得基本块的指令列表。
+     * 若要通过此方法向基本块中插入指令, 不要忘记设置指令的父基本块。
      */
-    public ArrayList<Inst> getInstructions() {
-        return instructions;
+    public ArrayList<Inst> getInsts() {
+        return insts;
     }
 
     /***
      * 返回基本块的最后一条指令。若基本块内无指令，返回null。
      */
     public Inst getLastInst() {
-        if (instructions.isEmpty()) {
+        if (insts.isEmpty()) {
             return null;
         }
-        return instructions.get(instructions.size() - 1);
+        return insts.get(insts.size() - 1);
     }
 
     public ArrayList<BasicBlock> getCFGPreList() {
@@ -160,11 +175,19 @@ public class BasicBlock extends Value {
         return endMoves;
     }
 
+    public Function getParentFunction() {
+        return parentFunction;
+    }
+
+    public void setParentFunction(Function parentFunction) {
+        this.parentFunction = parentFunction;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(name).append(":\n");
-        for (Inst inst : instructions) {
+        for (Inst inst : insts) {
             sb.append("    ").append(inst.toString()).append("\n");
         }
         return sb.toString();

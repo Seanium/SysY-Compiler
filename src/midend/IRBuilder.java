@@ -108,25 +108,33 @@ public class IRBuilder {
     }
 
     /***
-     * 生成当前函数的基本块标签名
+     * 生成当前函数的基本块标签名。
      */
     public String genBasicBlockLabel() {
-        return "b" + genRegIndex(getCurFunction());
+        return curFunction.getName().substring(1) + "_b" + genRegIndex(getCurFunction());
+    }
+
+    /***
+     * 生成指定函数的基本块标签名。
+     */
+    public String genBasicBlockLabelForFunc(Function function) {
+        return function.getName().substring(1) + "_b" + genRegIndex(function);
     }
 
     /***
      * 生成当前函数的局部变量名。
      */
     public String genLocalVarName() {
-        return "%v" + genRegIndex(getCurFunction());
+        return "%" + curFunction.getName().substring(1) + "_v" + genRegIndex(getCurFunction());
     }
 
     /***
      * 生成指定函数的局部变量名。
      */
-    public String genLocalVarNameForFunc(Function function){
-        return "%v" + genRegIndex(function);
+    public String genLocalVarNameForFunc(Function function) {
+        return "%" + function.getName().substring(1) + "_v" + genRegIndex(function);
     }
+
     /***
      * 生成全局字符串常量数组名。
      */

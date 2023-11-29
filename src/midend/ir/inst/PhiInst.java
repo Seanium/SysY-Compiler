@@ -22,10 +22,21 @@ public class PhiInst extends Inst {
         }
     }
 
-    public void addOption(Value value, BasicBlock pre) {
+    /***
+     * 用于多返回值函数内联。须确保cfgPreList与options中下标对应。
+     */
+    public PhiInst(String name, ArrayList<BasicBlock> cfgPreList, ArrayList<Value> options) {
+        super(IntegerType.i32, name, Opcode.phi);
+        this.cfgPreList = cfgPreList;
+        for (Value option : options) {
+            addOperand(option);
+        }
+    }
+
+    public void addOption(Value option, BasicBlock pre) {
         int index = cfgPreList.indexOf(pre);
-        operandList.set(index, value);
-        value.addUser(this);
+        operandList.set(index, option);
+        option.addUser(this);   // 未调用addOperand，需手动addUser
     }
 
     public ArrayList<BasicBlock> getCfgPreList() {

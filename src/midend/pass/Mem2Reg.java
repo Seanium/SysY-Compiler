@@ -31,6 +31,9 @@ public class Mem2Reg implements IRPass {
      */
     private final HashSet<BasicBlock> visited;
 
+    /***
+     * 插入phi指令，变量重命名。
+     */
     public Mem2Reg() {
         this.module = Module.getInstance();
         this.funcAllocaInstsMap = new HashMap<>();
@@ -52,7 +55,7 @@ public class Mem2Reg implements IRPass {
     private void findDef(Function function) {
         funcAllocaInstsMap.put(function, new ArrayList<>());
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 if (inst instanceof AllocaInst allocaInst && allocaInst.getTargetType() == IntegerType.i32) {   // 只处理普通变量alloca，不处理数组alloca
                     // 初始化map
                     funcAllocaInstsMap.get(function).add(allocaInst);
@@ -99,7 +102,7 @@ public class Mem2Reg implements IRPass {
     private void rename(Function function, BasicBlock entry) {
         visited.add(entry);
         HashMap<AllocaInst, Integer> pushCnt = new HashMap<>();    // 统计alloca变量在该基本块incomingValueStack入栈次数，处理结束后按入栈次数出栈
-        Iterator<Inst> iterator = entry.getInstructions().iterator();
+        Iterator<Inst> iterator = entry.getInsts().iterator();
         while (iterator.hasNext()) {
             Inst inst = iterator.next();
             if (inst instanceof AllocaInst allocaInst && funcAllocaInstsMap.get(function).contains(allocaInst)) {
@@ -129,7 +132,7 @@ public class Mem2Reg implements IRPass {
                 }
             }
             for (BasicBlock suc : entry.getCFGSucList()) {
-                for (Inst inst1 : suc.getInstructions()) {
+                for (Inst inst1 : suc.getInsts()) {
                     if (!(inst1 instanceof PhiInst phiInst)) {
                         break;
                     }

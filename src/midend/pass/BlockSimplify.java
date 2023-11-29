@@ -41,7 +41,7 @@ public class BlockSimplify implements IRPass {
      */
     private void removeRedundantInst(Function function) {
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            Iterator<Inst> iterator = basicBlock.getInstructions().iterator();
+            Iterator<Inst> iterator = basicBlock.getInsts().iterator();
             boolean allowRemove = false;
             while (iterator.hasNext()) {
                 Inst inst = iterator.next();
@@ -70,7 +70,7 @@ public class BlockSimplify implements IRPass {
     private void findReachableBlockClosure(BasicBlock entry) {
         if (!reachableBlockClosure.contains(entry)) {
             reachableBlockClosure.add(entry);
-            ArrayList<Inst> insts = entry.getInstructions();
+            ArrayList<Inst> insts = entry.getInsts();
             Inst lastInst = insts.get(insts.size() - 1);
             if (lastInst instanceof JumpInst jumpInst) {
                 findReachableBlockClosure(jumpInst.getTargetBasicBlock());

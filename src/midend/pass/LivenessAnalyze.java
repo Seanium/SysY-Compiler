@@ -15,6 +15,9 @@ import java.util.Objects;
 public class LivenessAnalyze implements IRPass {
     private final Module module;
 
+    /***
+     * 变量的活跃范围分析。
+     */
     public LivenessAnalyze() {
         this.module = Module.getInstance();
     }
@@ -37,7 +40,7 @@ public class LivenessAnalyze implements IRPass {
         ArrayList<BasicBlock> basicBlocks = function.getBasicBlocks();
         for (int i = basicBlocks.size() - 1; i >= 0; i--) {
             BasicBlock basicBlock = basicBlocks.get(i);
-            ArrayList<Inst> insts = basicBlock.getInstructions();
+            ArrayList<Inst> insts = basicBlock.getInsts();
             for (int j = insts.size() - 1; j >= 0; j--) {
                 Inst inst = insts.get(j);
                 // 定义每条指令的liveDef
@@ -60,7 +63,7 @@ public class LivenessAnalyze implements IRPass {
                     Inst sucInst = insts.get(j + 1);
                     inst.getLiveOut().addAll(sucInst.getLiveIn());  // 当前指令的liveOut是后继指令的liveOut 块内指令的后继是唯一的
                 } else if (i != basicBlocks.size() - 1) {   // 如果是基本块最后一条指令，且不是末尾基本块
-                    Inst sucInst = basicBlocks.get(i + 1).getInstructions().get(0);
+                    Inst sucInst = basicBlocks.get(i + 1).getInsts().get(0);
                     inst.getLiveOut().addAll(sucInst.getLiveIn());
                 }
                 // in[S] = gen[S] ∪ (out[S] - kill[S]) = use[S] ∪ (out[S] - def[S])
@@ -76,22 +79,6 @@ public class LivenessAnalyze implements IRPass {
                                 break;
                             }
                             pre.getLastInst().getLiveOut().addAll(inst.getLiveIn());    // 把循环体头部的活跃信息加入到循环体尾部
-
-//                            //todo 调试信息
-//                            StringBuilder liveIn = new StringBuilder();
-//                            liveIn.append("[liveIn] ");
-//                            for (Value value : inst.getLiveIn()) {
-//                                liveIn.append(value.getName()).append("\t");
-//                            }
-//                            System.out.println(liveIn);
-//
-//                            StringBuilder liveOut = new StringBuilder();
-//                            liveOut.append("[liveOut] ");
-//                            for (Value value : pre.getLastInst().getLiveOut()) {
-//                                liveOut.append(value.getName()).append("\t");
-//                            }
-//                            System.out.println(liveOut);
-
                             i = preIndex + 1;   // 返回到循环体尾部
                             loopHeadDone.add(basicBlock);   // 标记该循环头已处理
                             break;
@@ -105,7 +92,7 @@ public class LivenessAnalyze implements IRPass {
     private void setInstId(Function function) {
         int id = 0;
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 inst.setId(id);
                 id++;
             }
@@ -115,7 +102,7 @@ public class LivenessAnalyze implements IRPass {
     private void buildLiveRange(Function function) {
         ArrayList<BasicBlock> basicBlocks = function.getBasicBlocks();
         for (BasicBlock basicBlock : basicBlocks) {
-            ArrayList<Inst> insts = basicBlock.getInstructions();
+            ArrayList<Inst> insts = basicBlock.getInsts();
             for (Inst inst : insts) {
                 for (Value value : inst.getLiveIn()) {
                     value.getLiveRange().add(inst);
@@ -129,7 +116,7 @@ public class LivenessAnalyze implements IRPass {
      */
     private Inst getMoveTargetFisrtAppearInst(Function function, MoveInst moveInst) {
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 if (inst.equals(moveInst.getTo())) {
                     return inst;
                 }

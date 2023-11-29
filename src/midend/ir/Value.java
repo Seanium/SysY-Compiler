@@ -63,6 +63,10 @@ public class Value {
         return userList;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     /***
      * 将该value的全部user的operand，从该value替换为newOperand。
      * 也就是说，将后续对该value的使用，全部改为对newOperand的使用。

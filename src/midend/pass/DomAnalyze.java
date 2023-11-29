@@ -10,19 +10,29 @@ import midend.ir.inst.JumpInst;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class DFBuild implements IRPass {
+public class DomAnalyze implements IRPass {
     private final Module module;
 
-    public DFBuild() {
+    /***
+     * 构建控制流图，分析支配信息和支配边界。
+     */
+    public DomAnalyze() {
         this.module = Module.getInstance();
     }
 
     @Override
     public void run() {
         for (Function function : module.getNotLibFunctions()) {
+            clearDomInfo(function);
             buildCFG(function);
             buildDOM(function);
             buildDF(function);
+        }
+    }
+
+    private void clearDomInfo(Function function) {
+        for (BasicBlock basicBlock : function.getBasicBlocks()) {
+            basicBlock.clearDomInfo();
         }
     }
 

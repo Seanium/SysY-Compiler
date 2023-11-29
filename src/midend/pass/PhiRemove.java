@@ -1,8 +1,10 @@
 package midend.pass;
 
 import midend.IRBuilder;
+import midend.ir.BasicBlock;
+import midend.ir.Function;
 import midend.ir.Module;
-import midend.ir.*;
+import midend.ir.Value;
 import midend.ir.inst.Inst;
 import midend.ir.inst.MoveInst;
 import midend.ir.inst.PhiInst;
@@ -16,6 +18,9 @@ import java.util.Stack;
 public class PhiRemove implements IRPass {
     private final Module module;
 
+    /***
+     * 移除phi指令。包括将phi指令转为并行的move，以及将并行的move串行化。
+     */
     public PhiRemove() {
         this.module = Module.getInstance();
     }
@@ -35,7 +40,7 @@ public class PhiRemove implements IRPass {
     private void phi2ParallelCopy(Function function) {
         ArrayList<BasicBlock> basicBlocks = function.getBasicBlocks();
         for (BasicBlock B0 : basicBlocks) {
-            Iterator<Inst> iterator = B0.getInstructions().iterator();
+            Iterator<Inst> iterator = B0.getInsts().iterator();
             while (iterator.hasNext()) {
                 Inst inst = iterator.next();
                 if (!(inst instanceof PhiInst a0phi)) {
@@ -78,7 +83,8 @@ public class PhiRemove implements IRPass {
             basicBlock.addInsts(0, basicBlock.getBeginMoves());
             parallelCopy2Sequential(function, basicBlock.getEndMoves());
             // endMoves插入到基本块最后一条指令之前
-            basicBlock.addInsts(basicBlock.getInstructions().size() - 1, basicBlock.getEndMoves());
+            assert !basicBlock.getInsts().isEmpty() : "错误，基本块内无指令!";
+            basicBlock.addInsts(basicBlock.getInsts().size() - 1, basicBlock.getEndMoves());
         }
     }
 

@@ -21,7 +21,6 @@ public class Compiler {
 //        String source = FileIO.read(args[0]);  // 从命令行参数获取源文件名
         String source = FileIO.read("testfile.txt");
         Lexer lexer = Lexer.getInstance(source);
-//        输出
 //        String tokens = lexer.TokensToString(lexer.tokenize());
 //        System.out.println(tokens);
 //        FileIO.write("output.txt", tokens);
@@ -29,7 +28,6 @@ public class Compiler {
 //        2.语法分析
         Parser parser = Parser.getInstance(lexer);
         CompUnitNode compUnitNode = parser.parseCompUnit();
-//        输出
 //        String parseResult = compUnitNode.toString();
 //        System.out.println(parseResult);
 //        FileIO.write("output.txt", parseResult);
@@ -44,10 +42,11 @@ public class Compiler {
 //        4.中间代码生成 (LLVM IR)
         IRGenerator irGenerator = IRGenerator.getInstance();
         irGenerator.visitCompUnitNode(compUnitNode);
-//        输出
         Module module = Module.getInstance();
+        if (Config.getMode() == Config.Mode.DEBUG) {
 //        System.out.println(module);
-        FileIO.write("llvm_ir_raw.txt", module.toString());
+            FileIO.write("llvm_ir_raw.txt", module.toString());
+        }
 
         MIPSGenerator mipsGenerator;
         MIPSFile mipsFile;
@@ -55,31 +54,30 @@ public class Compiler {
 //        5.目标代码生成 (MIPS)(无优化)
             mipsGenerator = new MIPSGenerator();
             mipsGenerator.visitModule(Module.getInstance());
-//        输出
             mipsFile = mipsGenerator.getCurMIPSFile();
 //        System.out.println(mipsFile);
             FileIO.write("mips_raw.txt", mipsFile.toString());
         }
 
-//        6.中端代码优化
+//        6.中端优化
         IROptimizer irOptimizer = IROptimizer.getInstance();
         irOptimizer.runPasses();
-        FileIO.write("llvm_ir_move.txt", module.toString());
+        if (Config.getMode() == Config.Mode.DEBUG) {
+            FileIO.write("llvm_ir_move.txt", module.toString());
+        }
 
 //        7.目标代码生成 (MIPS)(仅中端优化)
         mipsGenerator = new MIPSGenerator();
         mipsGenerator.visitModule(Module.getInstance());
-//        输出
         if (Config.getMode() == Config.Mode.DEBUG) {
             mipsFile = mipsGenerator.getCurMIPSFile();
             FileIO.write("mips_no_back_opt.txt", mipsFile.toString());
         }
 
-//        8.后端代码优化
+//        8.后端优化
         mipsFile = mipsGenerator.getCurMIPSFile();
         MIPSOptimizer mipsOptimizer = new MIPSOptimizer(mipsFile);
         mipsOptimizer.runPasses();
-//        输出
         FileIO.write("mips.txt", mipsFile.toString());
     }
 }

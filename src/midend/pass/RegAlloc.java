@@ -18,6 +18,9 @@ public class RegAlloc implements IRPass {
      */
     private final LinkedHashMap<Reg, Value> regVarHashMap;
 
+    /***
+     * 寄存器分配。
+     */
     public RegAlloc() {
         this.module = Module.getInstance();
         this.regVarHashMap = new LinkedHashMap<>();
@@ -53,7 +56,7 @@ public class RegAlloc implements IRPass {
     private void regAlloc(Function function) {
         ArrayList<BasicBlock> basicBlocks = function.getBasicBlocks();
         for (BasicBlock basicBlock : basicBlocks) {
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 regDeAlloc(inst);
                 regAlloc(inst);
             }
@@ -108,7 +111,7 @@ public class RegAlloc implements IRPass {
         System.out.println(function.getName());
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
             System.out.println(basicBlock.getName());
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 // activeReg
                 StringBuilder activeRegInfo = new StringBuilder();
                 activeRegInfo.append("[activeReg] ");

@@ -14,6 +14,9 @@ public class DeadCodeRemove implements IRPass {
     private final Module module;
     private final HashSet<Inst> usefulInstClosure;
 
+    /***
+     * 死代码删除。
+     */
     public DeadCodeRemove() {
         this.module = Module.getInstance();
         this.usefulInstClosure = new HashSet<>();
@@ -41,7 +44,7 @@ public class DeadCodeRemove implements IRPass {
         usefulInstClosure.clear();
         // 找到该函数的有用指令闭包
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            for (Inst inst : basicBlock.getInstructions()) {
+            for (Inst inst : basicBlock.getInsts()) {
                 if (isUseful(inst)) {
                     findUsefulClosure(inst);
                 }
@@ -49,7 +52,7 @@ public class DeadCodeRemove implements IRPass {
         }
         // 删除不在有用指令闭包中的指令
         for (BasicBlock basicBlock : function.getBasicBlocks()) {
-            Iterator<Inst> iterator = basicBlock.getInstructions().iterator();
+            Iterator<Inst> iterator = basicBlock.getInsts().iterator();
             while (iterator.hasNext()) {
                 Inst inst = iterator.next();
                 if (!usefulInstClosure.contains(inst)) {

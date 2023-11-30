@@ -71,8 +71,8 @@ public class FuncCopier {
                 || srcValue instanceof Constant || srcValue instanceof Function) {
             return srcValue;
         } else {
-            assert copyMap.containsKey(srcValue) : "srcValue不存在于valueMap的键!";
-            assert copyMap.get(srcValue) != null : "srcValue在valueMap中对应的值为null!";
+            assert copyMap.containsKey(srcValue) : "错误，srcValue不存在于valueMap的键!";
+            assert copyMap.get(srcValue) != null : "错误，srcValue在valueMap中对应的值为null!";
             return copyMap.get(srcValue);
         }
     }

@@ -3,10 +3,7 @@ package midend.pass;
 import midend.ir.BasicBlock;
 import midend.ir.Function;
 import midend.ir.Module;
-import midend.ir.inst.BranchInst;
-import midend.ir.inst.Inst;
-import midend.ir.inst.JumpInst;
-import midend.ir.inst.ReturnInst;
+import midend.ir.inst.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,6 +15,10 @@ public class BlockSimplify implements IRPass {
      * 可达基本块的闭包。
      */
     private final HashSet<BasicBlock> reachableBlockClosure;
+    /***
+     * 可达函数的闭包。
+     */
+    private final HashSet<Function> reachableFuncClosure;
 
     /***
      * 简化每个基本块的尾部指令，并移除不可到达的基本块。
@@ -26,6 +27,7 @@ public class BlockSimplify implements IRPass {
     public BlockSimplify() {
         this.module = Module.getInstance();
         this.reachableBlockClosure = new HashSet<>();
+        this.reachableFuncClosure = new HashSet<>();
     }
 
     @Override
@@ -34,6 +36,7 @@ public class BlockSimplify implements IRPass {
             removeRedundantInst(function);
             removeUnreachableBlock(function);
         }
+        removeUnreachableFunc();
     }
 
     /***
@@ -77,6 +80,38 @@ public class BlockSimplify implements IRPass {
             } else if (lastInst instanceof BranchInst branchInst) {
                 findReachableBlockClosure(branchInst.getTrueBlock());
                 findReachableBlockClosure(branchInst.getFalseBlock());
+            }
+        }
+    }
+
+    /**
+     * 移除不可达函数。
+     */
+    private void removeUnreachableFunc() {
+        reachableFuncClosure.clear();
+        Function mainFunc = null;
+        for (Function function : module.getNotLibFunctions()) {
+            if (function.getName().equals("@main")) {
+                mainFunc = function;
+            }
+        }
+        assert mainFunc != null : "错误，不存在main函数!";
+        findReachableFuncClosure(mainFunc); // main函数一定可达
+        module.getFunctions().removeIf(function -> !reachableFuncClosure.contains(function));
+    }
+
+    /**
+     * 递归搜索可达函数的闭包。
+     */
+    private void findReachableFuncClosure(Function entry) {
+        if (!reachableFuncClosure.contains(entry)) {
+            reachableFuncClosure.add(entry);
+            for (BasicBlock basicBlock : entry.getBasicBlocks()) {
+                for (Inst inst : basicBlock.getInsts()) {
+                    if (inst instanceof CallInst callInst) {
+                        findReachableFuncClosure(callInst.getTargetFunc());
+                    }
+                }
             }
         }
     }

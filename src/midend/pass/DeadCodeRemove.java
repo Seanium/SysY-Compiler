@@ -24,8 +24,6 @@ public class DeadCodeRemove implements IRPass {
 
     @Override
     public void run() {
-        // 删除没有被调用的函数，main除外
-        module.getFunctions().removeIf(function -> function.getUserList().isEmpty() && !function.getName().equals("@main"));
         for (Function function : module.getNotLibFunctions()) {
             // 删除无用指令
             deadInstRemove(function);

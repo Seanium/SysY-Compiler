@@ -10,6 +10,7 @@ file_index_end=18 #B,C
 
 mars_file="mars.jar"
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
+#jar_file="../out/artifacts/compiler_jar/Compiler_Techniques.jar"
 
 for i in $(seq "$file_index_begin" "$file_index_end")
 do

@@ -601,162 +601,193 @@ public class MIPSGenerator {
     }
 
     private void visitIcmpInst(IcmpInst icmpInst) {
-        Value operand1 = icmpInst.getOperand1();
-        Value operand2 = icmpInst.getOperand2();
-        Reg op1Reg = Reg.t0;    // 操作数1的寄存器，默认为t0，若已分配则需修改
-        Reg op2Reg = Reg.t1;    // 操作数2的寄存器，默认为t1，若已分配则需修改
-        Reg toReg = Reg.t0;     // 保存结果的寄存器
-        // 获取操作数1
-        if (operand1 instanceof Constant constant) {    // 常数直接li
-            // li $t0 constant
-            LiInst liInst = new LiInst(Reg.t0, constant.getValue());
+        // 准备操作数
+        Value op1 = icmpInst.getOperand1();
+        Value op2 = icmpInst.getOperand2();
+
+        // 准备寄存器
+        Reg op1Reg = op1.inReg() ? op1.getReg() : Reg.t0;    // 操作数1的寄存器
+        Reg op2Reg = op2.inReg() ? op2.getReg() : Reg.t1;    // 操作数2的寄存器
+        Reg toReg = icmpInst.inReg() ? icmpInst.getReg() : Reg.t0;     // 保存结果的寄存器
+
+        if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 如果两个都是常数，可以直接比较，优化为li
+            IcmpInst.IcmpKind icmpKind = icmpInst.getIcmpKind();
+            int v1 = constant1.getValue();
+            int v2 = constant2.getValue();
+            int cond;
+            if (icmpKind == IcmpInst.IcmpKind.eq) {
+                cond = v1 == v2 ? 1 : 0;
+            } else if (icmpKind == IcmpInst.IcmpKind.ne) {
+                cond = v1 != v2 ? 1 : 0;
+            } else if (icmpKind == IcmpInst.IcmpKind.sgt) {
+                cond = v1 > v2 ? 1 : 0;
+            } else if (icmpKind == IcmpInst.IcmpKind.sge) {
+                cond = v1 >= v2 ? 1 : 0;
+            } else if (icmpKind == IcmpInst.IcmpKind.slt) {
+                cond = v1 < v2 ? 1 : 0;
+            } else {
+                assert icmpKind == IcmpInst.IcmpKind.sle;
+                cond = v1 <= v2 ? 1 : 0;
+            }
+            // li $toReg cond
+            LiInst liInst = new LiInst(toReg, cond);
             mipsBuilder.addAsm(liInst);
-        } else {
-            if (operand1.notInReg()) {  // 不在寄存器中，从内存加载
-                // lw $t0 offset($sp)
-//                if (mipsBuilder.isValueNotInCurRecord(operand1)) {
-//                    System.out.println(icmpInst);
-//                }
-                int offset = mipsBuilder.getOffsetOfValue(operand1);
+        } else {    // 如果存在非常数
+            // 获取操作数1
+            if (op1 instanceof Constant constant) {    // 常数直接li
+                // li $t0 constant
+                LiInst liInst = new LiInst(Reg.t0, constant.getValue());
+                mipsBuilder.addAsm(liInst);
+            } else if (op1.notInReg()) {  // 不在寄存器中，从内存加载
+                int offset = mipsBuilder.getOffsetOfValue(op1);
                 LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
                 mipsBuilder.addAsm(lwInst);
-            } else {    // 在寄存器中，修改其所在寄存器
-                op1Reg = operand1.getReg();
             }
-        }
-        // 获取操作数2
-        if (operand2 instanceof Constant constant) {    // 常数直接li
-            // li $t1 constant
-            LiInst liInst = new LiInst(Reg.t1, constant.getValue());
-            mipsBuilder.addAsm(liInst);
-        } else {
-            if (operand2.notInReg()) {  // 不在寄存器中，从内存加载
+
+            // 获取操作数2
+            if (op2 instanceof Constant constant) {    // 常数直接li
+                // li $t1 constant
+                LiInst liInst = new LiInst(Reg.t1, constant.getValue());
+                mipsBuilder.addAsm(liInst);
+            } else if (op2.notInReg()) {  // 不在寄存器中，从内存加载
                 // lw $t1 offset($sp)
-                int offset = mipsBuilder.getOffsetOfValue(operand2);
+                int offset = mipsBuilder.getOffsetOfValue(op2);
                 LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
                 mipsBuilder.addAsm(lwInst);
-            } else {    // 在寄存器中，修改其所在寄存器
-                op2Reg = operand2.getReg();
+
             }
-        }
-        Opcode opcode;
-        switch (icmpInst.getIcmpKind()) {
-            case eq -> opcode = Opcode.seq;
-            case ne -> opcode = Opcode.sne;
-            case sgt -> opcode = Opcode.sgt;
-            case sge -> opcode = Opcode.sge;
-            case slt -> opcode = Opcode.slt;
-            case sle -> opcode = Opcode.sle;
-            default -> opcode = null;
-        }
-        if (icmpInst.inReg()) { // 若结果分配了寄存器，存到寄存器
-            toReg = icmpInst.getReg();
-        }
-        // sxx $toReg $op1Reg $op2Reg
-        SetCmpInst setCmpInst = new SetCmpInst(opcode, toReg, op1Reg, op2Reg);
-        mipsBuilder.addAsm(setCmpInst);
-        if (icmpInst.notInReg()) {  // 若结果未分配寄存器，存到内存
-            // 添加到record
-            int resOffset = mipsBuilder.addValueToCurRecord(icmpInst);
-            // sw $t0 resOffset($sp)
-            SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
-            mipsBuilder.addAsm(swInst);
+            Opcode opcode;
+            switch (icmpInst.getIcmpKind()) {
+                case eq -> opcode = Opcode.seq;
+                case ne -> opcode = Opcode.sne;
+                case sgt -> opcode = Opcode.sgt;
+                case sge -> opcode = Opcode.sge;
+                case slt -> opcode = Opcode.slt;
+                case sle -> opcode = Opcode.sle;
+                default -> opcode = null;
+            }
+            // sxx $toReg $op1Reg $op2Reg
+            SetCmpInst setCmpInst = new SetCmpInst(opcode, toReg, op1Reg, op2Reg);
+            mipsBuilder.addAsm(setCmpInst);
+            if (icmpInst.notInReg()) {  // 若结果未分配寄存器，存到内存
+                // 添加到record
+                int resOffset = mipsBuilder.addValueToCurRecord(icmpInst);
+                // sw $t0 resOffset($sp)
+                SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
+                mipsBuilder.addAsm(swInst);
+            }
         }
     }
 
     private void visitBinaryInst(BinaryInst binaryInst) {
-        Value operand1 = binaryInst.getOperand1();
-        Value operand2 = binaryInst.getOperand2();
+        // 准备操作数
+        Value op1 = binaryInst.getOperand1();
+        Value op2 = binaryInst.getOperand2();
 
-        Reg op1Reg = Reg.t0;   // 默认为t0，若已分配寄存器再修改
-        Reg op2Reg = Reg.t1;   // 默认为t1，若已分配寄存器再修改
+        // 准备寄存器
+        Reg op1Reg = op1.inReg() ? op1.getReg() : Reg.t0;
+        Reg op2Reg = op2.inReg() ? op2.getReg() : Reg.t1;
         Reg toReg = binaryInst.inReg() ? binaryInst.getReg() : Reg.t0;
 
-        boolean adduToAddiu = false;  // 标记addu能优化为addiu
-        // 先对含常数的加法先进行特判，优化为addiu
-        Constant addiuConstant = null;
-        if (binaryInst.getOpcode() == midend.ir.inst.Opcode.add) {
-            if (operand1 instanceof Constant constant && !(operand2 instanceof Constant)) {
-                adduToAddiu = true; // 能够优化为addiu
-                addiuConstant = constant;
-                if (operand2.notInReg()) {
-                    // lw $t0 offset($sp)
-                    int offset = mipsBuilder.getOffsetOfValue(operand2);
-                    LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
-                } else {
-                    op1Reg = operand2.getReg(); // 前面的op1Reg指的是addiu的第一个操作数寄存器
-                }
-            } else if (!(operand1 instanceof Constant) && operand2 instanceof Constant constant) {
-                adduToAddiu = true; // 能够优化为addiu
-                addiuConstant = constant;
-                if (operand1.notInReg()) {
-                    // lw $t0 offset($sp)
-                    int offset = mipsBuilder.getOffsetOfValue(operand1);
-                    LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
-                } else {
-                    op1Reg = operand1.getReg();
-                }
-            } else if (operand1 instanceof Constant constant1 && operand2 instanceof Constant constant2) {  // 如果两个都是常数，让小的作为addiu的立即数
-                adduToAddiu = true; // 能够优化为addiu
-                addiuConstant = constant1.getValue() < constant2.getValue() ? constant1 : constant2;
-                Constant liConstant = constant1.getValue() < constant2.getValue() ? constant2 : constant1;
-                // li $op1Reg liConstant
-                LiInst liInst = new LiInst(op1Reg, liConstant.getValue());
-                mipsBuilder.addAsm(liInst);
-            }
-        }
-        if (!adduToAddiu) {
-            // 获取操作数1
-            if (operand1 instanceof Constant constant) {
-                // li $t0 constant
-                LiInst liInst = new LiInst(Reg.t0, constant.getValue());
-                mipsBuilder.addAsm(liInst);
-            } else {
-                if (operand1.notInReg()) {   // 未分配寄存器，从内存中取
-                    // lw $t0 offset($sp)
-                    int offset = mipsBuilder.getOffsetOfValue(operand1);
-                    LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
-                } else {    // 已分配寄存器，从寄存器中取
-                    op1Reg = operand1.getReg();
-                }
-            }
-            // 获取操作数2
-            if (operand2 instanceof Constant constant) {
-                // li $t1 constant
-                LiInst liInst = new LiInst(Reg.t1, constant.getValue());
-                mipsBuilder.addAsm(liInst);
-            } else {
-                if (operand2.notInReg()) {   // 未分配寄存器，从内存中取
-                    // lw $t1 offset($sp)
-                    int offset = mipsBuilder.getOffsetOfValue(operand2);
-                    LwInst lwInst = new LwInst(Reg.t1, offset, Reg.sp);
-                    mipsBuilder.addAsm(lwInst);
-                } else {    // 已分配寄存器，从寄存器中取
-                    op2Reg = operand2.getReg();
-                }
-            }
-        }
+        // 分情况解析并优化
         switch (binaryInst.getOpcode()) {
             case add -> {
-                if (!adduToAddiu) { // 如果addu不能优化为addiu
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 两个都是常数 常数一定不会分配寄存器
+                    // 直接计算和
+                    int res = constant1.getValue() + constant2.getValue();
+                    // li $toReg res
+                    LiInst liInst = new LiInst(toReg, res);
+                    mipsBuilder.addAsm(liInst);
+                } else if (op1 instanceof Constant || op2 instanceof Constant) {    // 只有一个常数
+                    Constant constant = (Constant) (op1 instanceof Constant ? op1 : op2);
+                    Value op = op1 instanceof Constant ? op2 : op1;
+                    Reg opReg = op.equals(op1) ? op1Reg : op2Reg;   // 这里不要写错，不要调用getReg
+                    if (constant.getValue() == 0) { // 如果这个常数是0 可以优化为lw或move
+                        if (op.notInReg()) {
+                            // lw $toReg offset($sp) 直接加载到toReg即可
+                            loadValueToReg(op, toReg);
+                        } else {
+                            // move $toReg $opReg   使用move，增加合并机会(比如，若toReg和opReg相同，会被后端优化)
+                            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, opReg);
+                            mipsBuilder.addAsm(moveMIPSInst);
+                        }
+                    } else {    // 如果这个常数不是0 可以优化为addiu
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // addiu $toReg $opReg constant
+                        AddiuInst addiuInst = new AddiuInst(toReg, opReg, constant.getValue());
+                        mipsBuilder.addAsm(addiuInst);
+                    }
+                } else {    // 两个都不是常数 无法优化
+                    if (op1.notInReg()) {
+                        loadValueToReg(op1, op1Reg);
+                    }
+                    if (op2.notInReg()) {
+                        loadValueToReg(op2, op2Reg);
+                    }
                     // addu $toReg $op1Reg $op2Reg
                     AdduInst adduInst = new AdduInst(toReg, op1Reg, op2Reg);
                     mipsBuilder.addAsm(adduInst);
-                } else {    // 如果addu能优化为addiu
-                    // addiu $toReg $op1Reg addiuConstant
-                    AddiuInst addiuInst = new AddiuInst(toReg, op1Reg, addiuConstant.getValue());
-                    mipsBuilder.addAsm(addiuInst);
                 }
             }
             case sub -> {
-                // subu $toReg $op1Reg $op2Reg
-                SubuInst subuInst = new SubuInst(toReg, op1Reg, op2Reg);
-                mipsBuilder.addAsm(subuInst);
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 两个都是常数
+                    // 直接计算差
+                    int res = constant1.getValue() - constant2.getValue();
+                    // li $toReg res
+                    LiInst liInst = new LiInst(toReg, res);
+                    mipsBuilder.addAsm(liInst);
+                } else if (!(op1 instanceof Constant) && op2 instanceof Constant constant) {    // 如果只有减数为常数
+                    if (constant.getValue() == 0) { // 如果减数为0 可以优化为lw或move
+                        if (op1.notInReg()) {   // 被减数在内存
+                            // lw $toReg offset($sp) 直接加载到toReg即可
+                            loadValueToReg(op1, toReg);
+                        } else {    // 被减数在寄存器
+                            // move $toReg $opReg
+                            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, op1Reg);
+                            mipsBuilder.addAsm(moveMIPSInst);
+                        }
+                    } else {    // 如果减数不为0，可以将减数取反，将subu优化为addiu
+                        if (op1.notInReg()) {
+                            loadValueToReg(op1, op1Reg);
+                        }
+                        // addiu $toReg $op1Reg $constantOpposite
+                        int constantOpposite = -constant.getValue();
+                        AddiuInst addiuInst = new AddiuInst(toReg, op1Reg, constantOpposite);
+                        mipsBuilder.addAsm(addiuInst);
+                    }
+                } else {    // 其他情况 即被减数为常数或不为常数，减数不为常数 无法优化
+                    if (op1 instanceof Constant constant) { // 被减数为常数
+                        // li $op1Reg constant
+                        LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else if (op1.notInReg()) {
+                        loadValueToReg(op1, op1Reg);
+                    }
+                    if (op2.notInReg()) {
+                        loadValueToReg(op2, op2Reg);
+                    }
+                    // subu $toReg $op1Reg $op2Reg
+                    SubuInst subuInst = new SubuInst(toReg, op1Reg, op2Reg);
+                    mipsBuilder.addAsm(subuInst);
+                }
             }
             case mul -> {
+                if (op1 instanceof Constant constant) {
+                    // li $op1Reg constant
+                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op1.notInReg()) {
+                    loadValueToReg(op1, op1Reg);
+                }
+                if (op2 instanceof Constant constant) {
+                    // li $op2Reg constant
+                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op2.notInReg()) {
+                    loadValueToReg(op2, op2Reg);
+                }
                 // mult $op1Reg $op2Reg
                 MultInst multInst = new MultInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(multInst);
@@ -765,6 +796,20 @@ public class MIPSGenerator {
                 mipsBuilder.addAsm(mfloInst);
             }
             case sdiv -> {
+                if (op1 instanceof Constant constant) {
+                    // li $op1Reg constant
+                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op1.notInReg()) {
+                    loadValueToReg(op1, op1Reg);
+                }
+                if (op2 instanceof Constant constant) {
+                    // li $op2Reg constant
+                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op2.notInReg()) {
+                    loadValueToReg(op2, op2Reg);
+                }
                 // div $op1Reg $op2Reg
                 DivInst divInst = new DivInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(divInst);
@@ -773,6 +818,20 @@ public class MIPSGenerator {
                 mipsBuilder.addAsm(mfloInst);
             }
             case srem -> {
+                if (op1 instanceof Constant constant) {
+                    // li $op1Reg constant
+                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op1.notInReg()) {
+                    loadValueToReg(op1, op1Reg);
+                }
+                if (op2 instanceof Constant constant) {
+                    // li $op2Reg constant
+                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
+                    mipsBuilder.addAsm(liInst);
+                } else if (op2.notInReg()) {
+                    loadValueToReg(op2, op2Reg);
+                }
                 // div $op1Reg $op2Reg
                 DivInst divInst = new DivInst(op1Reg, op2Reg);
                 mipsBuilder.addAsm(divInst);
@@ -788,6 +847,16 @@ public class MIPSGenerator {
             SwInst swInst = new SwInst(Reg.t0, resOffset, Reg.sp);
             mipsBuilder.addAsm(swInst);
         }
+    }
+
+    /**
+     * 将value从内存加载到寄存器。
+     * lw $reg offset($sp)
+     */
+    private void loadValueToReg(Value value, Reg reg) {
+        int offset = mipsBuilder.getOffsetOfValue(value);
+        LwInst lwInst = new LwInst(reg, offset, Reg.sp);
+        mipsBuilder.addAsm(lwInst);
     }
 
     private void visitMoveInst(MoveInst moveInst) {

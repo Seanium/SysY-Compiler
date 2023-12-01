@@ -180,6 +180,7 @@ public class MIPSGenerator {
                 || gepInst.getBasePointer() instanceof GEPInst) {   // 函数内联后，数组形参会被替换为实参，实参的类型为gep，因此被调函数内对形参数组的gep的basePointer的类型便是gep，而不再是alloca
             Value base = gepInst.getBasePointer();  // 内存基地址
             Reg baseReg = Reg.t0;  // 默认为t0，若已分配寄存器再更改
+            Reg toReg = gepInst.inReg() ? gepInst.getReg() : Reg.t1;
             if (gepInst.getBasePointer().notInReg()) {  // 若基地址未分配寄存器
                 // lw $t0 offset($sp) 数组首元素地址存入t0
                 int offset = mipsBuilder.getOffsetOfValue(gepInst.getBasePointer());
@@ -191,10 +192,10 @@ public class MIPSGenerator {
             Value gepOffset = gepInst.getOffset();  // 目标元素内存地址偏移量
             Reg gepOffsetReg = Reg.t1;  // 默认为t1，若已分配寄存器再更改
             if (gepOffset instanceof Constant constant) {  // 若偏移量为常数
-                // li $t1 eleOffset
+                // addiu $toReg $baseReg eleOffset
                 int eleOffset = 4 * constant.getValue(); // 下标小的元素在低地址
-                LiInst liInst = new LiInst(Reg.t1, eleOffset);
-                mipsBuilder.addAsm(liInst);
+                AddiuInst addiuInst = new AddiuInst(toReg, baseReg, eleOffset);
+                mipsBuilder.addAsm(addiuInst);
             } else {    // 偏移量不为常数
                 if (gepOffset.notInReg()) {   // 若gep偏移量未分配寄存器
                     // lw $t1 offset1($sp)
@@ -207,30 +208,27 @@ public class MIPSGenerator {
                 // sll $t1 $gepOffsetReg 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
                 SllInst sllInst = new SllInst(Reg.t1, gepOffsetReg, 2);
                 mipsBuilder.addAsm(sllInst);
+                // addu $toReg $baseReg $t1 目标元素地址存入toReg
+                AdduInst adduInst = new AdduInst(toReg, baseReg, Reg.t1);
+                mipsBuilder.addAsm(adduInst);
             }
             if (gepInst.notInReg()) {   // 若gep结果未分配寄存器
-                // addu $t1 $baseReg $t1 目标元素地址存入t1
-                AdduInst adduInst = new AdduInst(Reg.t1, baseReg, Reg.t1);
-                mipsBuilder.addAsm(adduInst);
                 // sw $t1 offset1($sp) 目标元素地址存入栈帧
                 int offset1 = mipsBuilder.addValueToCurRecord(gepInst);
                 SwInst swInst = new SwInst(Reg.t1, offset1, Reg.sp);
                 mipsBuilder.addAsm(swInst);
-            } else {    // 若gep结果分配了寄存器
-                // addu $toReg $baseReg $t1
-                Reg toReg = gepInst.getReg();
-                AdduInst adduInst = new AdduInst(toReg, baseReg, Reg.t1);
-                mipsBuilder.addAsm(adduInst);
             }
         } else if (gepInst.getBasePointer() instanceof GlobalArray globalArray) {   // 全局数组 下标小的元素在低地址
             Value gepOffset = gepInst.getOffset();  // 目标元素地址偏移量 gep偏移量
             Reg gepOffsetReg = Reg.t1;  // gep偏移量寄存器 默认为t1，若已分配寄存器再更改
+            Reg toReg = gepInst.inReg() ? gepInst.getReg() : Reg.t0;    // 默认为t0
+            String arrayLabel = globalArray.getName().substring(1);
             // 目标元素内存地址偏移量，存到t1
             if (gepOffset instanceof Constant constant) { // 若偏移量为常数
-                // li $t1 eleOffset
                 int eleOffset = 4 * constant.getValue();
-                LiInst liInst = new LiInst(Reg.t1, eleOffset);
-                mipsBuilder.addAsm(liInst);
+                // la $toReg arrayLabel+eleOffset   // 优化为常数偏移量的la指令
+                LaInst laInst = new LaInst(toReg, arrayLabel, eleOffset);
+                mipsBuilder.addAsm(laInst);
             } else {    // 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
                 if (gepOffset.notInReg()) { // 若gep偏移量未分配寄存器
                     // lw $t1 offset($sp)
@@ -243,20 +241,15 @@ public class MIPSGenerator {
                 // sll $t1 $gepOffsetReg 2 偏移量变量 需要*4 转换为地址偏移量 比如g[i]的实际地址偏移量是i*4
                 SllInst sllInst = new SllInst(Reg.t1, gepOffsetReg, 2);
                 mipsBuilder.addAsm(sllInst);
+                // la $toReg arrayLabel($t1) 目标元素地址存到toReg
+                LaInst laInst = new LaInst(toReg, globalArray.getName().substring(1), Reg.t1);
+                mipsBuilder.addAsm(laInst);
             }
             if (gepInst.notInReg()) {   // 若gep结果即目标元素地址未分配寄存器
-                // la $t0 arrayLabel($t1) 目标元素地址存到t0
-                LaInst laInst = new LaInst(Reg.t0, globalArray.getName().substring(1), Reg.t1);
-                mipsBuilder.addAsm(laInst);
                 // sw $t0 offset($sp) 目标元素地址存到栈帧
                 int offset = mipsBuilder.addValueToCurRecord(gepInst);
                 SwInst swInst = new SwInst(Reg.t0, offset, Reg.sp);
                 mipsBuilder.addAsm(swInst);
-            } else {    // 若gep结果分配了寄存器
-                // la $toReg arrayLabel($t1)
-                Reg toReg = gepInst.getReg();
-                LaInst laInst = new LaInst(toReg, globalArray.getName().substring(1), Reg.t1);
-                mipsBuilder.addAsm(laInst);
             }
         }
     }

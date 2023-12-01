@@ -44,8 +44,8 @@ public class RegAlloc implements IRPass {
      * 初始化可用寄存器。
      */
     private void initRegPool() {
-        // 可用寄存器范围不能包括t0和t1
-        for (int i = Reg.t2.ordinal(); i < Reg.t9.ordinal(); i++) {
+        // 可用寄存器范围不能包括t0、t1、t2
+        for (int i = Reg.t3.ordinal(); i < Reg.t9.ordinal(); i++) {
             regVarHashMap.put(Reg.values()[i], null);
         }
     }

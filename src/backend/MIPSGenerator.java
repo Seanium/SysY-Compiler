@@ -679,6 +679,16 @@ public class MIPSGenerator {
         }
     }
 
+    /**
+     * 将value从内存加载到寄存器。
+     * lw $reg offset($sp)
+     */
+    private void loadValueToReg(Value value, Reg reg) {
+        int offset = mipsBuilder.getOffsetOfValue(value);
+        LwInst lwInst = new LwInst(reg, offset, Reg.sp);
+        mipsBuilder.addAsm(lwInst);
+    }
+
     private void visitBinaryInst(BinaryInst binaryInst) {
         // 准备操作数
         Value op1 = binaryInst.getOperand1();
@@ -692,13 +702,13 @@ public class MIPSGenerator {
         // 分情况解析并优化
         switch (binaryInst.getOpcode()) {
             case add -> {
-                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 两个都是常数 常数一定不会分配寄存器
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 两个加数都是常数 常数一定不会分配寄存器
                     // 直接计算和
                     int res = constant1.getValue() + constant2.getValue();
                     // li $toReg res
                     LiInst liInst = new LiInst(toReg, res);
                     mipsBuilder.addAsm(liInst);
-                } else if (op1 instanceof Constant || op2 instanceof Constant) {    // 只有一个常数
+                } else if (op1 instanceof Constant || op2 instanceof Constant) {    // 只有加数为一个常数
                     Constant constant = (Constant) (op1 instanceof Constant ? op1 : op2);
                     Value op = op1 instanceof Constant ? op2 : op1;
                     Reg opReg = op.equals(op1) ? op1Reg : op2Reg;   // 这里不要写错，不要调用getReg
@@ -707,7 +717,7 @@ public class MIPSGenerator {
                             // lw $toReg offset($sp) 直接加载到toReg即可
                             loadValueToReg(op, toReg);
                         } else {
-                            // move $toReg $opReg   使用move，增加合并机会(比如，若toReg和opReg相同，会被后端优化)
+                            // move $toReg $opReg   使用move，增加合并机会(例如，若toReg和opReg相同，会被后端优化)
                             MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, opReg);
                             mipsBuilder.addAsm(moveMIPSInst);
                         }
@@ -719,7 +729,7 @@ public class MIPSGenerator {
                         AddiuInst addiuInst = new AddiuInst(toReg, opReg, constant.getValue());
                         mipsBuilder.addAsm(addiuInst);
                     }
-                } else {    // 两个都不是常数 无法优化
+                } else {    // 两个加数都不是常数 无法优化
                     if (op1.notInReg()) {
                         loadValueToReg(op1, op1Reg);
                     }
@@ -774,70 +784,248 @@ public class MIPSGenerator {
                 }
             }
             case mul -> {
-                if (op1 instanceof Constant constant) {
-                    // li $op1Reg constant
-                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {   // 两个因子都是常数
+                    // 直接计算乘积
+                    int res = constant1.getValue() * constant2.getValue();
+                    // li $toReg res
+                    LiInst liInst = new LiInst(toReg, res);
                     mipsBuilder.addAsm(liInst);
-                } else if (op1.notInReg()) {
-                    loadValueToReg(op1, op1Reg);
+                } else if (op1 instanceof Constant || op2 instanceof Constant) {    // 只有一个因子为常数
+                    Constant constant = (Constant) (op1 instanceof Constant ? op1 : op2);
+                    Value op = op1 instanceof Constant ? op2 : op1;
+                    Reg opReg = op.equals(op1) ? op1Reg : op2Reg;
+                    Reg constantReg = op.equals(op1) ? op2Reg : op1Reg; // constantReg一定是t0或t1
+                    int constantVal = constant.getValue();
+                    if (constantVal == 0) { // 若常数因子为0 直接li
+                        // li $toReg 0
+                        LiInst liInst = new LiInst(toReg, 0);
+                        mipsBuilder.addAsm(liInst);
+                    } else if (constantVal == 1 || constantVal == -1) {  // 若常数因子为1, 可以优化为lw或move // 若常数因子为-1, 可以优化为lw+subu 或 subu
+                        if (op.notInReg()) {
+                            // lw $toReg offset($sp)
+                            loadValueToReg(op, toReg);
+                        } else {
+                            // move $toReg $opReg
+                            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, opReg);
+                            mipsBuilder.addAsm(moveMIPSInst);
+                        }
+                        if (constantVal == -1) {
+                            // subu $toReg $zero $opReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.zero, opReg);
+                            mipsBuilder.addAsm(subuInst);
+                        }
+                    } else if (constantVal >= 2 && isPowerOfTwo(constantVal)) { // a*(2^n) 优化成 a<<n (2^n >= 2)  比如a*4优化成a<<2
+                        int n = getPowerOfTwo(constantVal);
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $toReg $opReg n
+                        SllInst sllInst = new SllInst(toReg, opReg, n);
+                        mipsBuilder.addAsm(sllInst);
+                    } else if (constantVal <= -2 && isPowerOfTwo(-constantVal)) {   // a*(-2^n) 优化成 -(a<<n)     比如a*(-4)优化成-(a<<2)
+                        int n = getPowerOfTwo(-constantVal);
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $toReg $opReg n
+                        SllInst sllInst = new SllInst(toReg, opReg, n);
+                        mipsBuilder.addAsm(sllInst);
+                        // subu $toReg $zero $toReg
+                        SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                        mipsBuilder.addAsm(subuInst);
+                    } else if (constantVal >= 3 && canSplitToTwoSllPlus(constantVal)) {     // a*(2^m+2^n)      优化成 (a<<m)+(a<<n) 若n为0，则是(a<<m)+a
+                        int[] res = splitToTwoSllPlus(constantVal);
+                        int m = res[0];
+                        int n = res[1];
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $t2 $opReg m     // 这里不得不使用t2，不能用toReg，toReg只能在最后储存结果，因为opReg可能和toReg分配到同一个寄存器
+                        SllInst sllInst = new SllInst(Reg.t2, opReg, m);
+                        mipsBuilder.addAsm(sllInst);
+
+                        if (n > 0) {
+                            // sll $constantReg $opReg n (n为0时则省略)      // 注意这里结果不能用opReg, 因为不能修改活跃寄存器
+                            SllInst sllInst1 = new SllInst(constantReg, opReg, n);
+                            mipsBuilder.addAsm(sllInst1);
+                            // addu $toReg $t2 $constantReg
+                            AdduInst adduInst = new AdduInst(toReg, Reg.t2, constantReg);
+                            mipsBuilder.addAsm(adduInst);
+                        } else {
+                            assert n == 0;
+                            // addu $toReg $t2 $opReg
+                            AdduInst adduInst = new AdduInst(toReg, Reg.t2, opReg);
+                            mipsBuilder.addAsm(adduInst);
+                        }
+
+                    } else if (constantVal <= -3 && canSplitToTwoSllPlus(-constantVal)) {   // a*(-(2^m+2^n))   优化成 -((a<<m)+(a<<n))
+                        int[] res = splitToTwoSllPlus(-constantVal);
+                        int m = res[0];
+                        int n = res[1];
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $t2 $opReg m
+                        SllInst sllInst = new SllInst(Reg.t2, opReg, m);
+                        mipsBuilder.addAsm(sllInst);
+
+                        if (n > 0) {
+                            // sll $constantReg $opReg n (n为0时则省略)      // 注意这里结果不能用opReg, 因为不能修改活跃寄存器
+                            SllInst sllInst1 = new SllInst(constantReg, opReg, n);
+                            mipsBuilder.addAsm(sllInst1);
+                            // addu $toReg $t2 $constantReg
+                            AdduInst adduInst = new AdduInst(toReg, Reg.t2, constantReg);
+                            mipsBuilder.addAsm(adduInst);
+                        } else {
+                            assert n == 0;
+                            // addu $toReg $t2 $opReg
+                            AdduInst adduInst = new AdduInst(toReg, Reg.t2, opReg);
+                            mipsBuilder.addAsm(adduInst);
+                        }
+
+                        // subu $toReg $zero $toReg
+                        SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                        mipsBuilder.addAsm(subuInst);
+
+                    } else if (constantVal >= 3 && canSplitToTwoSllMinus(constantVal)) {    // a*(2^m-2^n)      优化成 (a<<m)-(a<<n) 若n为0，则是(a<<m)-a
+                        int[] res = splitToTwoSllMinus(constantVal);
+                        int m = res[0];
+                        int n = res[1];
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $t2 $opReg m
+                        SllInst sllInst = new SllInst(Reg.t2, opReg, m);
+                        mipsBuilder.addAsm(sllInst);
+
+                        if (n > 0) {
+                            // sll $constantReg $opReg n (n为0时则省略)      // 注意这里结果不能用opReg, 因为不能修改活跃寄存器
+                            SllInst sllInst1 = new SllInst(constantReg, opReg, n);
+                            mipsBuilder.addAsm(sllInst1);
+                            // subu $toReg $t2 $constantReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.t2, constantReg);
+                            mipsBuilder.addAsm(subuInst);
+                        } else {
+                            assert n == 0;
+                            // subu $toReg $t2 $opReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.t2, opReg);
+                            mipsBuilder.addAsm(subuInst);
+                        }
+
+                    } else if (constantVal <= -3 && canSplitToTwoSllMinus(constantVal)) {   // a*(-(2^m-2^n))   优化成 (a<<n)-(a<<m) 若n为0，则是a-(a<<m)
+                        int[] res = splitToTwoSllMinus(constantVal);
+                        int m = res[0];
+                        int n = res[1];
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // sll $t2 $opReg m
+                        SllInst sllInst = new SllInst(Reg.t2, opReg, m);
+                        mipsBuilder.addAsm(sllInst);
+
+                        if (n > 0) {
+                            // sll $constantReg $opReg n (n为0时则省略)      // 注意这里结果不能用opReg, 因为不能修改活跃寄存器
+                            SllInst sllInst1 = new SllInst(constantReg, opReg, n);
+                            mipsBuilder.addAsm(sllInst1);
+                            // subu $toReg $constantReg $t2
+                            SubuInst subuInst = new SubuInst(toReg, constantReg, Reg.t2);
+                            mipsBuilder.addAsm(subuInst);
+                        } else {
+                            assert n == 0;
+                            // subu $toReg $opReg $t2
+                            SubuInst subuInst = new SubuInst(toReg, opReg, Reg.t2);
+                            mipsBuilder.addAsm(subuInst);
+                        }
+                    } else {    // 无法优化成移位
+                        // 加载非常数因子
+                        if (op.notInReg()) {
+                            loadValueToReg(op, opReg);
+                        }
+                        // 加载常数因子
+                        // li $constantReg constantVal
+                        LiInst liInst = new LiInst(constantReg, constantVal);
+                        mipsBuilder.addAsm(liInst);
+                        // mult $op1Reg $op2Reg
+                        MultInst multInst = new MultInst(op1Reg, op2Reg);
+                        mipsBuilder.addAsm(multInst);
+                        // mflo $toReg
+                        MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
+                        mipsBuilder.addAsm(mfloInst);
+                    }
+                } else {    // 两个因子都不是常数 无法优化
+                    if (op1.notInReg()) {
+                        loadValueToReg(op1, op1Reg);
+                    }
+                    if (op2.notInReg()) {
+                        loadValueToReg(op2, op2Reg);
+                    }
+                    // mult $op1Reg $op2Reg
+                    MultInst multInst = new MultInst(op1Reg, op2Reg);
+                    mipsBuilder.addAsm(multInst);
+                    // mflo $toReg
+                    MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
+                    mipsBuilder.addAsm(mfloInst);
                 }
-                if (op2 instanceof Constant constant) {
-                    // li $op2Reg constant
-                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
-                    mipsBuilder.addAsm(liInst);
-                } else if (op2.notInReg()) {
-                    loadValueToReg(op2, op2Reg);
-                }
-                // mult $op1Reg $op2Reg
-                MultInst multInst = new MultInst(op1Reg, op2Reg);
-                mipsBuilder.addAsm(multInst);
-                // mflo $toReg
-                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
-                mipsBuilder.addAsm(mfloInst);
             }
             case sdiv -> {
-                if (op1 instanceof Constant constant) {
-                    // li $op1Reg constant
-                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
+                    // 直接计算商
+                    int res = constant1.getValue() / constant2.getValue();
+                    // li $toReg res
+                    LiInst liInst = new LiInst(toReg, res);
                     mipsBuilder.addAsm(liInst);
-                } else if (op1.notInReg()) {
-                    loadValueToReg(op1, op1Reg);
+                } else {
+                    if (op1 instanceof Constant constant) {
+                        // li $op1Reg constant
+                        LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else if (op1.notInReg()) {
+                        loadValueToReg(op1, op1Reg);
+                    }
+                    if (op2 instanceof Constant constant) {
+                        // li $op2Reg constant
+                        LiInst liInst = new LiInst(op2Reg, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else if (op2.notInReg()) {
+                        loadValueToReg(op2, op2Reg);
+                    }
+                    // div $op1Reg $op2Reg
+                    DivInst divInst = new DivInst(op1Reg, op2Reg);
+                    mipsBuilder.addAsm(divInst);
+                    // mflo $toReg
+                    MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
+                    mipsBuilder.addAsm(mfloInst);
                 }
-                if (op2 instanceof Constant constant) {
-                    // li $op2Reg constant
-                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
-                    mipsBuilder.addAsm(liInst);
-                } else if (op2.notInReg()) {
-                    loadValueToReg(op2, op2Reg);
-                }
-                // div $op1Reg $op2Reg
-                DivInst divInst = new DivInst(op1Reg, op2Reg);
-                mipsBuilder.addAsm(divInst);
-                // mflo $toReg
-                MfHiloInst mfloInst = new MfHiloInst(Opcode.mflo, toReg);
-                mipsBuilder.addAsm(mfloInst);
             }
             case srem -> {
-                if (op1 instanceof Constant constant) {
-                    // li $op1Reg constant
-                    LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
+                    // 直接计算余数
+                    int res = constant1.getValue() % constant2.getValue();
+                    // li $toReg res
+                    LiInst liInst = new LiInst(toReg, res);
                     mipsBuilder.addAsm(liInst);
-                } else if (op1.notInReg()) {
-                    loadValueToReg(op1, op1Reg);
+                } else {
+                    if (op1 instanceof Constant constant) {
+                        // li $op1Reg constant
+                        LiInst liInst = new LiInst(op1Reg, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else if (op1.notInReg()) {
+                        loadValueToReg(op1, op1Reg);
+                    }
+                    if (op2 instanceof Constant constant) {
+                        // li $op2Reg constant
+                        LiInst liInst = new LiInst(op2Reg, constant.getValue());
+                        mipsBuilder.addAsm(liInst);
+                    } else if (op2.notInReg()) {
+                        loadValueToReg(op2, op2Reg);
+                    }
+                    // div $op1Reg $op2Reg
+                    DivInst divInst = new DivInst(op1Reg, op2Reg);
+                    mipsBuilder.addAsm(divInst);
+                    // mfhi $toReg
+                    MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, toReg);
+                    mipsBuilder.addAsm(mfhiInst);
                 }
-                if (op2 instanceof Constant constant) {
-                    // li $op2Reg constant
-                    LiInst liInst = new LiInst(op2Reg, constant.getValue());
-                    mipsBuilder.addAsm(liInst);
-                } else if (op2.notInReg()) {
-                    loadValueToReg(op2, op2Reg);
-                }
-                // div $op1Reg $op2Reg
-                DivInst divInst = new DivInst(op1Reg, op2Reg);
-                mipsBuilder.addAsm(divInst);
-                // mfhi $toReg
-                MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, toReg);
-                mipsBuilder.addAsm(mfhiInst);
             }
         }
         if (binaryInst.notInReg()) { // 若未分配寄存器，将结果保存到栈帧
@@ -850,13 +1038,95 @@ public class MIPSGenerator {
     }
 
     /**
-     * 将value从内存加载到寄存器。
-     * lw $reg offset($sp)
+     * 判断number是不是2^n。
      */
-    private void loadValueToReg(Value value, Reg reg) {
-        int offset = mipsBuilder.getOffsetOfValue(value);
-        LwInst lwInst = new LwInst(reg, offset, Reg.sp);
-        mipsBuilder.addAsm(lwInst);
+    private boolean isPowerOfTwo(int num) {
+        return (num > 0) && ((num & (num - 1)) == 0);
+    }
+
+    /**
+     * 若number==2^n，返回n。
+     */
+    private int getPowerOfTwo(int num) {
+        assert isPowerOfTwo(num) : "错误，number不等于2^n";
+        int count = 0;
+        while (num > 1) {
+            num >>= 1;
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * 判断一个正数能否拆成两次移位运算之和，即num==2^m+2^n，其中m>=0, n>=0。
+     */
+    private boolean canSplitToTwoSllPlus(int num) {
+        String binaryString = Integer.toBinaryString(num);
+        int oriLen = binaryString.length();
+        binaryString = binaryString.replace("1", "");
+        int newLen = binaryString.length();
+        // 判断条件是，该正数二进制表示中，'1'出现了两次
+        return num > 0 && (oriLen - newLen == 2);
+    }
+
+    /**
+     * 若正数能被拆成两次移位运算之和，即num==2^m+2^n，则按降序返回m和n。
+     */
+    private int[] splitToTwoSllPlus(int num) {
+        assert canSplitToTwoSllPlus(num) : "错误，num不能拆分为两次移位运算之和";
+        int[] result = new int[2];
+        String binaryString = Integer.toBinaryString(num);
+        int len = binaryString.length();
+
+        int m = len - 1 - binaryString.indexOf('1');
+        int n = len - 1 - binaryString.lastIndexOf('1');
+
+        result[0] = m;
+        result[1] = n;
+
+        return result;
+    }
+
+    /**
+     * 判断一个正数能否拆成两次移位运算之差，即num==2^m-2^n，其中m>=0, n>=0。
+     */
+    private boolean canSplitToTwoSllMinus(int num) {
+        if (num <= 0) {
+            return false;
+        }
+        String binaryString = Integer.toBinaryString(num);
+        ArrayList<Integer> oneIndexs = new ArrayList<>();
+        // 统计'1'的下标
+        for (int i = 0; i < binaryString.length(); i++) {
+            if (binaryString.charAt(i) == '1') {
+                oneIndexs.add(i);
+            }
+        }
+        // 判断'1'的下标是否连续
+        for (int i = 0; i < oneIndexs.size() - 1; i++) {
+            if (oneIndexs.get(i) + 1 != oneIndexs.get(i + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 若正数能被拆成两次移位运算之差，即num==2^m-2^n，则按降序返回m和n。
+     */
+    private int[] splitToTwoSllMinus(int num) {
+        assert canSplitToTwoSllMinus(num) : "错误，num不能拆分为两次移位运算之差";
+        int[] result = new int[2];
+        String binaryString = Integer.toBinaryString(num);
+        int len = binaryString.length();
+
+        int m = len - binaryString.indexOf('1');
+        int n = len - 1 - binaryString.lastIndexOf('1');
+
+        result[0] = m;
+        result[1] = n;
+
+        return result;
     }
 
     private void visitMoveInst(MoveInst moveInst) {

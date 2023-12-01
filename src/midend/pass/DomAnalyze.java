@@ -13,7 +13,7 @@ import java.util.HashSet;
 public class DomAnalyze implements IRPass {
     private final Module module;
 
-    /***
+    /**
      * 构建控制流图，分析支配信息和支配边界。
      */
     public DomAnalyze() {
@@ -36,7 +36,7 @@ public class DomAnalyze implements IRPass {
         }
     }
 
-    /***
+    /**
      * 构建CFG(控制流图)。
      */
     private void buildCFG(Function function) {
@@ -58,7 +58,7 @@ public class DomAnalyze implements IRPass {
         }
     }
 
-    /***
+    /**
      * 计算不经过dominator结点时，能访问到的所有结点。
      * @param entry 入口基本块。
      * @param dominator 待计算其dom列表的dominator，即dfs中要“删除”的结点。
@@ -118,7 +118,7 @@ public class DomAnalyze implements IRPass {
         }
     }
 
-    /***
+    /**
      * 构建每个结点的支配边界列表(dfList)。
      */
     private void buildDF(Function function) {

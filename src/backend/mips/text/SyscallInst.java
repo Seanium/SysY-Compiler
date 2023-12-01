@@ -5,7 +5,7 @@ import backend.mips.Asm;
 public class SyscallInst extends Asm {
     private final Opcode opcode;
 
-    /***
+    /**
      * syscall
      */
     public SyscallInst() {

@@ -6,7 +6,7 @@ public class JalInst extends Asm {
     private final Opcode opcode;
     private final String label;
 
-    /***
+    /**
      * jal label
      */
     public JalInst(String label) {

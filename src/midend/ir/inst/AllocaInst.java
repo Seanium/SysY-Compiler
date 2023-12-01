@@ -6,7 +6,7 @@ import midend.ir.type.Type;
 public class AllocaInst extends Inst {
     final Type targetType;
 
-    /***
+    /**
      *
      * @param name 赋值号左边的寄存器名
      * @param targetType 所存储变量的类型

@@ -7,7 +7,7 @@ public class ReturnInst extends Inst {
     // ret void             value == null
     // ret <type> <value>   value != null
 
-    /***
+    /**
      * 若为return;请传入null。
      */
     public ReturnInst(Value value) {

@@ -8,7 +8,7 @@ public class MultInst extends Asm {
     private final Reg op1;
     private final Reg op2;
 
-    /***
+    /**
      * mult $op1 $op2
      */
     public MultInst(Reg op1, Reg op2) {

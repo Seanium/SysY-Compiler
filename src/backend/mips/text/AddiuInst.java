@@ -9,7 +9,7 @@ public class AddiuInst extends Asm {
     private final Reg op1;
     private final int op2;
 
-    /***
+    /**
      * addiu $res $op1 op2
      * @param res   结果寄存器。
      * @param op1  加数1寄存器。

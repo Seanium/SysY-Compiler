@@ -12,16 +12,16 @@ import java.util.HashSet;
 
 public class FuncInline implements IRPass {
     private final Module module;
-    /***
+    /**
      * 该函数所调用的函数集合。
      */
     private final HashMap<Function, HashSet<Function>> calleesOfFunc;
-    /***
+    /**
      * 调用了该函数的函数集合。
      */
     private final HashMap<Function, HashSet<Function>> callersOfFunc;
 
-    /***
+    /**
      * 函数内联。
      */
     public FuncInline() {
@@ -35,7 +35,7 @@ public class FuncInline implements IRPass {
         funcInline();
     }
 
-    /***
+    /**
      * 每次迭代，内联当前调用树的叶子结点函数。
      */
     private void funcInline() {
@@ -61,7 +61,7 @@ public class FuncInline implements IRPass {
         }
     }
 
-    /***
+    /**
      * 得到函数间的调用和被调用信息。
      */
     private void getCallInfo() {
@@ -86,7 +86,7 @@ public class FuncInline implements IRPass {
         }
     }
 
-    /***
+    /**
      * 将callee内联到其caller中。
      */
     private void funcInline(Function callee) {
@@ -107,7 +107,7 @@ public class FuncInline implements IRPass {
         }
     }
 
-    /***
+    /**
      * 替换call指令。
      * 内联后的基本块顺序应为：..., preBlock(以call结尾), calleeBlocks(被调函数的全部基本块), sucBlock(新建), ...
      */

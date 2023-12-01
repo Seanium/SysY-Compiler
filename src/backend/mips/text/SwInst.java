@@ -11,7 +11,7 @@ public class SwInst extends Asm {
     private Reg to;
     private String toLabel;
 
-    /***
+    /**
      * sw $from toOffset($to)
      */
     public SwInst(Reg from, int toOffset, Reg to) {
@@ -22,7 +22,7 @@ public class SwInst extends Asm {
         this.to = to;
     }
 
-    /***
+    /**
      * sw $from toLabel
      */
     public SwInst(Reg from, String toLabel) {

@@ -9,7 +9,7 @@ public class SetCmpInst extends Asm {
     private final Reg op1;
     private final Reg op2;
 
-    /***
+    /**
      * opcode $target $op1 $op2
      * 例如 seq $t0 $t0 $t1
      */

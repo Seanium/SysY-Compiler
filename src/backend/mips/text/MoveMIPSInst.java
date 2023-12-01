@@ -8,7 +8,7 @@ public class MoveMIPSInst extends Asm {
     private final Reg to;
     private final Reg from;
 
-    /***
+    /**
      * move $to $from
      */
     public MoveMIPSInst(Reg to, Reg from) {

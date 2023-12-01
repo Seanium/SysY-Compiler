@@ -7,8 +7,8 @@ public class MfHiloInst extends Asm {
     private final Opcode opcode;
     private final Reg to;
 
-    /***
-     * opcode $target
+    /**
+     * opcode $to
      * 例如 mfhi $t0
      */
     public MfHiloInst(Opcode opcode, Reg to) {

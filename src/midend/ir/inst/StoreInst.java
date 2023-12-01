@@ -5,7 +5,7 @@ import midend.ir.type.VoidType;
 
 public class StoreInst extends Inst {
 
-    /***
+    /**
      *
      * @param from  待存储的value
      * @param to    存储位置

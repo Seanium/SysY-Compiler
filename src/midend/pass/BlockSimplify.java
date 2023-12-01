@@ -11,16 +11,16 @@ import java.util.Iterator;
 
 public class BlockSimplify implements IRPass {
     private final Module module;
-    /***
+    /**
      * 可达基本块的闭包。
      */
     private final HashSet<BasicBlock> reachableBlockClosure;
-    /***
+    /**
      * 可达函数的闭包。
      */
     private final HashSet<Function> reachableFuncClosure;
 
-    /***
+    /**
      * 简化每个基本块的尾部指令，并移除不可到达的基本块。
      * 简化尾部指令，指的是移除冗余的br或ret及其后续指令（即保证每个基本块的末尾语句是首条br或ret，为后面计算CFG做好准备）。
      */
@@ -39,7 +39,7 @@ public class BlockSimplify implements IRPass {
         removeUnreachableFunc();
     }
 
-    /***
+    /**
      * 移除冗余的br或ret及其后续指令（即每个基本块的末尾语句是首条br或ret）。
      */
     private void removeRedundantInst(Function function) {
@@ -58,7 +58,7 @@ public class BlockSimplify implements IRPass {
         }
     }
 
-    /***
+    /**
      * 移除不可到达的基本块。
      */
     private void removeUnreachableBlock(Function function) {
@@ -67,7 +67,7 @@ public class BlockSimplify implements IRPass {
         function.getBasicBlocks().removeIf(basicBlock -> !reachableBlockClosure.contains(basicBlock));
     }
 
-    /***
+    /**
      * 递归搜索可达基本块的闭包。
      */
     private void findReachableBlockClosure(BasicBlock entry) {

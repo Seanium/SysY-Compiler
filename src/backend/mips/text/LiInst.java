@@ -8,7 +8,7 @@ public class LiInst extends Asm {
     private final Reg to;
     private final int imm;
 
-    /***
+    /**
      * li $to imm
      */
     public LiInst(Reg to, int imm) {

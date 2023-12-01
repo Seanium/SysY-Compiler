@@ -9,7 +9,7 @@ public class SllInst extends Asm {
     private final Reg op1;
     private final int op2;
 
-    /***
+    /**
      * sll $res $op1 op2
      */
     public SllInst(Reg res, Reg op1, int op2) {

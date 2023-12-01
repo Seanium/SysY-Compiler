@@ -10,7 +10,7 @@ public class RecordManager {
         this.records = new HashMap<>();
     }
 
-    /***
+    /**
      * 根据函数名查询record。若不存在则先创建再返回。
      * @param funcName 函数名。
      * @return 对应的record。

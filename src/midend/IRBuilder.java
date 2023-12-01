@@ -37,42 +37,42 @@ public class IRBuilder {
     private int offset; // 保存当前的GEP指令偏移量    // 用于解析局部数组变量初值。依次创建GEP，解析初值，创建store指令。
     private int strArrIndex;   // 全局字符串常量数组的索引，用于生成globalArray的name
 
-    /***
+    /**
      * 添加全局变量(非数组)到模块
      */
     public void addGlobalVar(GlobalVar globalVar) {
         module.addGlobalVar(globalVar);
     }
 
-    /***
+    /**
      * 添加全局变量(数组)到模块
      */
     public void addGlobalArray(GlobalArray globalArray) {
         module.addGlobalArray(globalArray);
     }
 
-    /***
+    /**
      * 添加函数到模块
      */
     public void addFunctionToModule(Function function) {
         module.addFunction(function);
     }
 
-    /***
+    /**
      * 添加基本块到当前函数
      */
     public void addBasicBlockToCurFunction(BasicBlock basicBlock) {
         getCurFunction().addBasicBlock(basicBlock);
     }
 
-    /***
+    /**
      * 添加指令到当前基本块。
      */
     public void addInstToCurBasicBlock(Inst inst) {
         getCurBasicBlock().addInstAtLast(inst);
     }
 
-    /***
+    /**
      * 添加指令到指定基本块。
      */
     private void addInstToBasicBlock(Inst inst, BasicBlock basicBlock) {
@@ -107,35 +107,35 @@ public class IRBuilder {
         return curRegIndex;
     }
 
-    /***
+    /**
      * 生成当前函数的基本块标签名。
      */
     public String genBasicBlockLabel() {
         return curFunction.getName().substring(1) + "_b" + genRegIndex(getCurFunction());
     }
 
-    /***
+    /**
      * 生成指定函数的基本块标签名。
      */
     public String genBasicBlockLabelForFunc(Function function) {
         return function.getName().substring(1) + "_b" + genRegIndex(function);
     }
 
-    /***
+    /**
      * 生成当前函数的局部变量名。
      */
     public String genLocalVarName() {
         return "%" + curFunction.getName().substring(1) + "_v" + genRegIndex(getCurFunction());
     }
 
-    /***
+    /**
      * 生成指定函数的局部变量名。
      */
     public String genLocalVarNameForFunc(Function function) {
         return "%" + function.getName().substring(1) + "_v" + genRegIndex(function);
     }
 
-    /***
+    /**
      * 生成全局字符串常量数组名。
      */
     public String genStrArrName() {
@@ -144,105 +144,105 @@ public class IRBuilder {
         return ".str" + curStrArrIndex;
     }
 
-    /***
+    /**
      * 获取当前条件真目标基本块。
      */
     public BasicBlock getCurTrueBlock() {
         return curTrueBlock;
     }
 
-    /***
+    /**
      * 设置当前条件真目标基本块。
      */
     public void setCurTrueBlock(BasicBlock curTrueBlock) {
         this.curTrueBlock = curTrueBlock;
     }
 
-    /***
+    /**
      * 获取当前条件假目标基本块。
      */
     public BasicBlock getCurFalseBlock() {
         return curFalseBlock;
     }
 
-    /***
+    /**
      * 设置当前条件假目标基本块。
      */
     public void setCurFalseBlock(BasicBlock curFalseBlock) {
         this.curFalseBlock = curFalseBlock;
     }
 
-    /***
+    /**
      * 获取continue语句的跳转目标基本块。
      */
     public BasicBlock getContinueTargetBlock() {
         return continueTargetBlock;
     }
 
-    /***
+    /**
      * 设置continue语句的跳转目标基本块。
      */
     public void setContinueTargetBlock(BasicBlock continueTargetBlock) {
         this.continueTargetBlock = continueTargetBlock;
     }
 
-    /***
+    /**
      * 获取break语句的跳转目标基本块。
      */
     public BasicBlock getBreakTargetBlock() {
         return breakTargetBlock;
     }
 
-    /***
+    /**
      * 设置break语句的跳转目标基本块。
      */
     public void setBreakTargetBlock(BasicBlock breakTargetBlock) {
         this.breakTargetBlock = breakTargetBlock;
     }
 
-    /***
+    /**
      * 获取当前解析的数组初值。
      */
     public ArrayInitValue getCurArrayInitValue() {
         return curArrayInitValue;
     }
 
-    /***
+    /**
      * 设置当前解析的数组初值。
      */
     public void setCurArrayInitValue(ArrayInitValue curArrayInitValue) {
         this.curArrayInitValue = curArrayInitValue;
     }
 
-    /***
+    /**
      * 获取当前的局部数组变量指针。
      */
     public AllocaInst getAllocaInst() {
         return allocaInst;
     }
 
-    /***
+    /**
      * 设置当前的局部数组变量指针。
      */
     public void setAllocaInst(AllocaInst allocaInst) {
         this.allocaInst = allocaInst;
     }
 
-    /***
+    /**
      * 获取当前的GEP指令偏移量。
      */
     public int getOffset() {
         return offset;
     }
 
-    /***
+    /**
      * 设置当前的GEP指令偏移量。
      */
     public void setOffset(int offset) {
         this.offset = offset;
     }
 
-    /***
+    /**
      * 根据数组维数计算len。
      * @param dims 数组维数列表。
      */
@@ -254,7 +254,7 @@ public class IRBuilder {
         return len;
     }
 
-    /***
+    /**
      * 计算数组元素左值的偏移量。
      * @param indexes   左值下标列表。
      * @param dims  数组维度列表。
@@ -306,7 +306,7 @@ public class IRBuilder {
         return offset;
     }
 
-    /***
+    /**
      * 计算数组元素左值的偏移量。用于常量初值的编译时计算，不创建指令，直接返回int。
      * @param indexes   左值下标列表。
      * @param dims  数组维度列表。
@@ -353,7 +353,7 @@ public class IRBuilder {
         return offset;
     }
 
-    /***
+    /**
      * // 如果是void函数且最后没有return;，则补充return;
      * @param func 要检查的函数。
      */

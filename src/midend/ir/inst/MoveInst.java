@@ -4,7 +4,7 @@ import midend.ir.Value;
 
 public class MoveInst extends Inst {
 
-    /***
+    /**
      * 汇编形式：   move to from
      */
     public MoveInst(Value to, Value from) {

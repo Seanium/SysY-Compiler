@@ -11,7 +11,7 @@ public class LwInst extends Asm {
     private Reg from;
     private String fromLabel;
 
-    /***
+    /**
      * lw $to fromOffset($from)
      */
     public LwInst(Reg to, int fromOffset, Reg from) {
@@ -22,7 +22,7 @@ public class LwInst extends Asm {
         this.from = from;
     }
 
-    /***
+    /**
      * lw $to fromLabel
      */
     public LwInst(Reg to, String fromLabel) {

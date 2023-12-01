@@ -4,14 +4,14 @@ import backend.mips.Asm;
 import backend.mips.Reg;
 
 public class LaInst extends Asm {
-    private int type;
+    private final int type;
     private final Opcode opcode;
     private final Reg to;
     private final String fromLabel;
     private final Reg offset;
     private final int immOffset;
 
-    /***
+    /**
      * la $to fromLabel($offset)
      */
     public LaInst(Reg to, String fromLabel, Reg offset) {

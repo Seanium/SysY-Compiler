@@ -18,7 +18,7 @@ import java.util.Stack;
 public class PhiRemove implements IRPass {
     private final Module module;
 
-    /***
+    /**
      * 移除phi指令。包括将phi指令转为并行的move，以及将并行的move串行化。
      */
     public PhiRemove() {
@@ -33,7 +33,7 @@ public class PhiRemove implements IRPass {
         }
     }
 
-    /***
+    /**
      * 将phi指令转换为并行的复制指令。
      * 采用SSA-Book中的算法21.1 (isolating phi-nodes)。
      */
@@ -88,7 +88,7 @@ public class PhiRemove implements IRPass {
         }
     }
 
-    /***
+    /**
      * 将并行的复制指令串行化。
      * 对moves进行就地修改。
      */

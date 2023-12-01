@@ -11,12 +11,12 @@ public class Value {
     protected final Type type;
     protected String name;
     private final LinkedHashSet<Inst> liveRange;
-    /***
+    /**
      * 该变量分配到的寄存器。
      * 为null表示尚未分配，为Reg.NOREG表示已经决定不分配寄存器，为Reg.寄存器表示分配对应寄存器。
      */
     private Reg reg;
-    /***
+    /**
      * 记录谁使用了该value。
      */
     protected final ArrayList<User> userList;
@@ -37,14 +37,14 @@ public class Value {
         this.reg = reg;
     }
 
-    /***
+    /**
      * 若尚未分配或决定不分配寄存器，返回真。
      */
     public boolean notInReg() {
         return this.reg == null || this.reg == Reg.NOREG;
     }
 
-    /***
+    /**
      * 若已分配到寄存器，返回真。
      */
     public boolean inReg() {
@@ -67,7 +67,7 @@ public class Value {
         this.name = name;
     }
 
-    /***
+    /**
      * 将该value的全部user的operand，从该value替换为newOperand。
      * 也就是说，将后续对该value的使用，全部改为对newOperand的使用。
      */
@@ -78,7 +78,7 @@ public class Value {
         }
     }
 
-    /***
+    /**
      * 删除该value的指定user。
      */
     public void removeUser(User user) {

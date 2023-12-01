@@ -6,7 +6,7 @@ import midend.ir.type.IntegerType;
 public class IcmpInst extends Inst {
     final IcmpKind icmpKind;  // 比较类型
 
-    /***
+    /**
      *
      * @param name  右值寄存器名。
      * @param icmpKind  比较类型。
@@ -40,31 +40,31 @@ public class IcmpInst extends Inst {
                 operand1.getType() + " " + operand1.getName() + ", " + operand2.getName();
     }
 
-    /***
+    /**
      * Icmp比较类型的枚举类。
      */
     public enum IcmpKind {
-        /***
+        /**
          * 等于
          */
         eq,
-        /***
+        /**
          * 不等于
          */
         ne,
-        /***
+        /**
          * 有符号大于
          */
         sgt,
-        /***
+        /**
          * 有符号大于等于
          */
         sge,
-        /***
+        /**
          * 有符号小于
          */
         slt,
-        /***
+        /**
          * 有符号小于等于
          */
         sle

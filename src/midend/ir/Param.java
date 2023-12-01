@@ -8,7 +8,7 @@ import java.util.Objects;
 public class Param extends Value {
     private ArrayList<Integer> dims;
 
-    /***
+    /**
      *
      * @param type 形参类型。
      * @param name 形参名称。如果是库函数，请传入空字符串，即""。否则应为寄存器。
@@ -17,7 +17,7 @@ public class Param extends Value {
         super(type, name);
     }
 
-    /***
+    /**
      * 设置c源代码中数组形参维数列表。空缺的首个维度补为1。
      * 比如形参 int a[][2][3] 的 dims 为 {1, 2, 3}。
      * 比如形参 int b[] 的 dims 为 {0}。

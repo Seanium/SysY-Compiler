@@ -8,7 +8,7 @@ public class WordData extends Asm {
     private final String name;
     private final ArrayList<Integer> values;
 
-    /***
+    /**
      * .word
      * @param name 标签名。
      * @param values 值列表。请传入逆序后的初值。

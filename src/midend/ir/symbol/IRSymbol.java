@@ -6,7 +6,7 @@ public class IRSymbol {
     private final Value symbol;
     private final Value initValue;
 
-    /***
+    /**
      *
      * @param symbol 符号，为 Value 子类的实例。
      *               对于非数组全局变量、非数组全局常量，为 GlobalVar 的实例;

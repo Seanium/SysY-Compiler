@@ -5,7 +5,7 @@ import midend.ir.type.Type;
 import java.util.ArrayList;
 
 public class User extends Value {
-    /***
+    /**
      * 记录该value使用了谁。
      */
     protected final ArrayList<Value> operandList;
@@ -39,7 +39,7 @@ public class User extends Value {
         return varOperandList;
     }
 
-    /***
+    /**
      * 将该value的operand中的oldValue，替换为newValue。
      */
     public void replaceOperand(Value oldOperand, Value newOperand) {
@@ -56,7 +56,7 @@ public class User extends Value {
         }
     }
 
-    /***
+    /**
      * 删除该user作为其operand的user的信息。
      * 即在该user的每个operand的user列表中，去除该user。
      */

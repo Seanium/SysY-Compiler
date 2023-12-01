@@ -5,7 +5,7 @@ import midend.ir.type.PointerType;
 
 public class LoadInst extends Inst {
 
-    /***
+    /**
      *
      * @param name 待存放到的寄存器名
      * @param pointer 待取出元素的指针

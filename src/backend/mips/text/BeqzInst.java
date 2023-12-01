@@ -8,7 +8,7 @@ public class BeqzInst extends Asm {
     private final Reg cond;
     private final String label;
 
-    /***
+    /**
      * beqz $cond label
      */
     public BeqzInst(Reg cond, String label) {

@@ -9,47 +9,47 @@ import java.util.ArrayList;
 public class BasicBlock extends Value {
     private Function parentFunction;
     private final ArrayList<Inst> insts;
-    /***
+    /**
      * CFG中，该基本块的前驱基本块列表。
      */
     private final ArrayList<BasicBlock> cfgPreList;
-    /***
+    /**
      * CFG中，该基本块的后继基本块列表。
      */
     private final ArrayList<BasicBlock> cfgSucList;
-    /***
+    /**
      * 该基本块支配的基本块列表。即该基本块的支配下级。
      */
     private final ArrayList<BasicBlock> domList;
-    /***
+    /**
      * 支配该基本块的基本块列表。即该基本块的支配上级。
      */
     private final ArrayList<BasicBlock> domByList;
-    /***
+    /**
      * 该基本块严格支配的基本块列表。即该基本块的严格支配下级。
      */
     private final ArrayList<BasicBlock> strictDomList;
-    /***
+    /**
      * 严格支配该基本块的基本块列表。即该基本块的严格支配上级。
      */
     private final ArrayList<BasicBlock> strictDomByList;
-    /***
+    /**
      * 该基本块直接支配的基本块。即该基本块的直接支配下级。
      */
     private final ArrayList<BasicBlock> immDomList;
-    /***
+    /**
      * 直接支配该基本块的基本块。即该基本块的直接支配上级。
      */
     private BasicBlock immDomBy;
-    /***
+    /**
      * 该基本块的严格支配边界。
      */
     private final ArrayList<BasicBlock> dfList;
-    /***
+    /**
      * 基本块开头的move指令集合。
      */
     private final ArrayList<MoveInst> beginMoves;
-    /***
+    /**
      * 基本块末尾的move指令集合。
      */
     private final ArrayList<MoveInst> endMoves;
@@ -71,7 +71,7 @@ public class BasicBlock extends Value {
         this.endMoves = new ArrayList<>();
     }
 
-    /***
+    /**
      * 清空支配信息。
      */
     public void clearDomInfo() {
@@ -86,7 +86,7 @@ public class BasicBlock extends Value {
         this.dfList.clear();
     }
 
-    /***
+    /**
      * 插入指令到指令列表尾部。
      */
     public void addInstAtLast(Inst inst) {
@@ -94,7 +94,7 @@ public class BasicBlock extends Value {
         inst.setParentBasicBlock(this);
     }
 
-    /***
+    /**
      * 插入指令到指令列表头部。
      */
     public void addInstAtFirst(Inst inst) {
@@ -109,7 +109,7 @@ public class BasicBlock extends Value {
         }
     }
 
-    /***
+    /**
      * 获得基本块的指令列表。
      * 若要通过此方法向基本块中插入指令, 不要忘记设置指令的父基本块。
      */
@@ -117,7 +117,7 @@ public class BasicBlock extends Value {
         return insts;
     }
 
-    /***
+    /**
      * 返回基本块的最后一条指令。若基本块内无指令，返回null。
      */
     public Inst getLastInst() {

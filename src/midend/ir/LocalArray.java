@@ -11,7 +11,7 @@ public class LocalArray extends Value {
 
     private final boolean isConst;
 
-    /***
+    /**
      * 局部数组。
      * 与全局数组不同，其type为数组类型。局部数组的指针类型为其alloc指令。
      * 局部数组不存入IR的结构，只会存入符号表。局部数组的alloc指令才会被存入IR的结构。
@@ -30,7 +30,7 @@ public class LocalArray extends Value {
         return len;
     }
 
-    /***
+    /**
      * 设置局部数组的右值名。
      * @param name 右值名为：数组的alloc语句中，赋值号左侧的寄存器名。
      */

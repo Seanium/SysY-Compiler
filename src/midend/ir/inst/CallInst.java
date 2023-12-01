@@ -8,7 +8,7 @@ import java.util.ArrayList;
 
 public class CallInst extends Inst {
 
-    /***
+    /**
      *
      * @param name 右值寄存器名。如果调用的函数无返回值，请传入null。
      * @param targetFunc 调用的函数。

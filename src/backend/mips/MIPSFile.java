@@ -11,16 +11,16 @@ public class MIPSFile {
         this.text = new ArrayList<>();
     }
 
-    /***
+    /**
      * 数据段
      */
     private final ArrayList<Asm> data;
-    /***
+    /**
      * 代码段
      */
     private final ArrayList<Asm> text;
 
-    /***
+    /**
      * 获得text中的非注释部分。
      */
     public ArrayList<Asm> getTextWithoutComment() {

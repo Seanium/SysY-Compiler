@@ -8,7 +8,7 @@ import java.util.ArrayList;
 public class ArrayInitValue extends Value {
     private final ArrayList<Constant> constants;
 
-    /***
+    /**
      * 数组的初值（自定义初值内容）。
      * @param type  初值元素类型。
      * @param constants 初值列表，元素为Constant。
@@ -18,14 +18,14 @@ public class ArrayInitValue extends Value {
         this.constants = constants;
     }
 
-    /***
+    /**
      * 向初值列表中添加i32元素。
      */
     public void addi32(int e) {
         this.constants.add(new Constant(IntegerType.i32, e));
     }
 
-    /***
+    /**
      * 向初值列表中添加n个i32的0。
      * @param n 添加 i32的0 的数量
      */
@@ -35,7 +35,7 @@ public class ArrayInitValue extends Value {
         }
     }
 
-    /***
+    /**
      * 检查初值列表是否全为0。
      */
     public boolean checkAllZero() {
@@ -51,7 +51,7 @@ public class ArrayInitValue extends Value {
         return constants;
     }
 
-    /***
+    /**
      * 获取第offset个元素的初值(int类型)。
      * @param offset 偏移量。
      */

@@ -10,7 +10,7 @@ public class Function extends Value {
     private final ArrayList<Param> params;    // 没有形参则为无元素
     private final ArrayList<BasicBlock> basicBlocks;
     private boolean isLib;  // 是否为库函数
-    /***
+    /**
      * 该函数所有的变量。也就是要分配寄存器的value。
      */
     private final LinkedHashSet<Value> vars;
@@ -27,7 +27,7 @@ public class Function extends Value {
         this.vars = new LinkedHashSet<>();
     }
 
-    /***
+    /**
      * 添加形参到形参列表。如果没有形参，则不必调用该函数。
      * @param param 要添加的形参。
      */
@@ -35,7 +35,7 @@ public class Function extends Value {
         this.params.add(param);
     }
 
-    /***
+    /**
      * 标记函数为库函数。
      */
     public void setIsLib() {

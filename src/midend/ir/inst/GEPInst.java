@@ -7,7 +7,7 @@ import midend.ir.type.Type;
 
 public class GEPInst extends Inst {
 
-    /***
+    /**
      * GetElementPtr指令。
      * @param type 右值类型，必须是一个指针类型。目前，除了全局常量字符串是i8*，其他均为i32*。
      * @param name 右值名：赋值号左边的寄存器名。

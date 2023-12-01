@@ -8,7 +8,7 @@ public class DivInst extends Asm {
     private final Reg op1;
     private final Reg op2;
 
-    /***
+    /**
      * div $op1 $op2
      */
     public DivInst(Reg op1, Reg op2) {

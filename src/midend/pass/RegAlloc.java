@@ -13,12 +13,12 @@ import java.util.LinkedHashMap;
 
 public class RegAlloc implements IRPass {
     private final Module module;
-    /***
+    /**
      * 当前reg中存放的value。
      */
     private final LinkedHashMap<Reg, Value> regVarHashMap;
 
-    /***
+    /**
      * 寄存器分配。
      */
     public RegAlloc() {
@@ -40,7 +40,7 @@ public class RegAlloc implements IRPass {
         }
     }
 
-    /***
+    /**
      * 初始化可用寄存器。
      */
     private void initRegPool() {
@@ -50,7 +50,7 @@ public class RegAlloc implements IRPass {
         }
     }
 
-    /***
+    /**
      * 遍历函数每条语句，调用regDeAlloc和regAlloc。
      */
     private void regAlloc(Function function) {
@@ -63,7 +63,7 @@ public class RegAlloc implements IRPass {
         }
     }
 
-    /***
+    /**
      * 为失活的变量取消分配寄存器。
      */
     private void regDeAlloc(Inst inst) {
@@ -75,7 +75,7 @@ public class RegAlloc implements IRPass {
         }
     }
 
-    /***
+    /**
      * 为未决策的活跃变量分配寄存器。
      * 只决策一次分配或者不分配。
      */
@@ -104,7 +104,7 @@ public class RegAlloc implements IRPass {
         }
     }
 
-    /***
+    /**
      * 打印每条指令的liveness信息和每条指令的活跃寄存器、每个变量的寄存器分配信息。
      */
     private void printLivenessRegInfo(Function function) {

@@ -5,7 +5,7 @@ import midend.ir.type.VoidType;
 
 public class JumpInst extends Inst {
 
-    /***
+    /**
      * 无条件跳转指令。
      * @param targetBasicBlock 要跳转到的基本块。
      */

@@ -9,7 +9,7 @@ public class AdduInst extends Asm {
     private final Reg op1;
     private final Reg op2;
 
-    /***
+    /**
      * addu $res $operand1 $ operand2
      */
     public AdduInst(Reg res, Reg op1, Reg op2) {

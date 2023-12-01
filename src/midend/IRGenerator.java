@@ -198,7 +198,7 @@ public class IRGenerator {
     // 6.常量初值 ConstInitVal → ConstExp
     // | '{' [ ConstInitVal { ',' ConstInitVal } ] '}' // 1.常表达式初值 2.一维数组初值 3.二维数组初值
 
-    /***
+    /**
      * 解析全局常量数组初值，使用前请先设置curArrayInitValue，用于递归添加元素。
      */
     private void visitConstInitValNode(ConstInitValNode constInitValNode) {
@@ -345,7 +345,7 @@ public class IRGenerator {
 
     // 9.变量初值 InitVal → Exp | '{' [ InitVal { ',' InitVal } ] '}'// 1.表达式初值 2.一维数组初值 3.二维数组初值
 
-    /***
+    /**
      * 解析全局数组变量初值，使用前请先设置curArrayInitValue，用于递归添加元素。
      */
     private void visitInitValNodeForGlobal(InitValNode initValNode) {
@@ -360,7 +360,7 @@ public class IRGenerator {
         }
     }
 
-    /***
+    /**
      * 解析局部数组变量初值。依次创建GEP，解析初值，创建store指令。
      */
     private void visitInitValNodeForLocal(InitValNode initValNode) {
@@ -837,7 +837,7 @@ public class IRGenerator {
 
     // 21.左值表达式 LVal → Ident {'[' Exp ']'} //1.普通变量 2.一维数组 3.二维数组
 
-    /***
+    /**
      * 解析lval作为右值的情况。
      * 比如 a[0] = b[0];
      * a[0]和b[0]同样是lval，但a[0]是左值，需要取地址(GEP)；而b[0]是右值，需要取值(load)。
@@ -889,7 +889,7 @@ public class IRGenerator {
         }
     }
 
-    /***
+    /**
      * 解析lval作为左值，且是数组元素的情况。此时的lval一定定位到元素，即dims.size() == values.size()。
      * 比如 a[0] = b[0];
      * a[0]和b[0]同样是lval，但a[0]是左值，需要取地址(GEP)；而b[0]是右值，需要取值(load)。
@@ -940,7 +940,7 @@ public class IRGenerator {
     // 24.一元表达式 UnaryExp → PrimaryExp | Ident '(' [FuncRParams] ')' // 3种情况均需覆盖,函数调用也需要覆盖FuncRParams的不同情况
     // | UnaryOp UnaryExp // 存在即可
 
-    /***
+    /**
      *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
@@ -1017,7 +1017,7 @@ public class IRGenerator {
     // 27.乘除模表达式 MulExp → UnaryExp | MulExp ('*' | '/' | '%') UnaryExp // 1.UnaryExp 2.* 3./ 4.% 均需覆盖
     //【消除左递归】 MulExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
 
-    /***
+    /**
      *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
@@ -1066,7 +1066,7 @@ public class IRGenerator {
     // 28.加减表达式 AddExp → MulExp | AddExp ('+' | '−') MulExp // 1.MulExp 2.+ 需覆盖 3.- 需覆盖
     // 【消除左递归】 AddExp → MulExp {('+' | '−') MulExp}
 
-    /***
+    /**
      *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
@@ -1113,7 +1113,7 @@ public class IRGenerator {
     // 29.关系表达式 RelExp → AddExp | RelExp ('<' | '>' | '<=' | '>=') AddExp // 1.AddExp 2.< 3.> 4.<= 5.>= 均需覆盖
     // 【消除左递归】 RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp}
 
-    /***
+    /**
      *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
@@ -1166,7 +1166,7 @@ public class IRGenerator {
     // 30.相等性表达式 EqExp → RelExp | EqExp ('==' | '!=') RelExp // 1.RelExp 2.== 3.!= 均需覆盖
     // 【消除左递归】 EqExp → RelExp { ('==' | '!=') RelExp}
 
-    /***
+    /**
      *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
@@ -1297,7 +1297,7 @@ public class IRGenerator {
 
     // 33.常量表达式 ConstExp → AddExp 注：使用的Ident 必须是常量 // 存在即可
 
-    /***
+    /**
      * 计算常量表达式的值。
      * @return 常量表达式的值。
      */

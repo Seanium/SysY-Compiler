@@ -6,7 +6,7 @@ import midend.ir.type.VoidType;
 
 public class BranchInst extends Inst {
 
-    /***
+    /**
      * 条件跳转指令。
      */
     public BranchInst(Value cond, BasicBlock trueBlock, BasicBlock falseBlock) {

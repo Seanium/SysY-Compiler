@@ -5,7 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class FileIO {
-    /***
+    /**
      * 输入文件名，输出对应文件内容的字符串形式。
      */
     public static String read(String filename) {
@@ -17,7 +17,7 @@ public class FileIO {
         }
     }
 
-    /***
+    /**
      * 将指定字符串写入文件名对应的文件。
      */
     public static void write(String filename, String content) {

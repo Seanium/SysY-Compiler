@@ -10,28 +10,28 @@ import java.util.*;
 
 public class Mem2Reg implements IRPass {
     private final Module module;
-    /***
+    /**
      * 每个函数的alloca列表。
      */
     private final HashMap<Function, ArrayList<AllocaInst>> funcAllocaInstsMap;
-    /***
+    /**
      * 每个alloca变量的再定义基本块列表。
      */
     private final HashMap<AllocaInst, ArrayList<BasicBlock>> allocaDefBlocksMap;
-    /***
+    /**
      * 每条phi指令对应的alloca变量。
      */
     private final HashMap<PhiInst, AllocaInst> phiAllocaMap;
-    /***
+    /**
      * 每个alloca变量的incomingValue栈。
      */
     private final HashMap<AllocaInst, Stack<Value>> allocaIncomingValueMap;
-    /***
+    /**
      * 变量重命名dfs标记已访问基本块。
      */
     private final HashSet<BasicBlock> visited;
 
-    /***
+    /**
      * 插入phi指令，变量重命名。
      */
     public Mem2Reg() {

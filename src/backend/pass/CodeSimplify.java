@@ -21,7 +21,7 @@ public class CodeSimplify implements MIPSPass {
         moveSimplify();
     }
 
-    /***
+    /**
      * 相邻块合并，移除冗余j指令。
      */
     private void jumpSimplify() {
@@ -38,7 +38,7 @@ public class CodeSimplify implements MIPSPass {
         mipsFile.getText().removeAll(toRemove);
     }
 
-    /***
+    /**
      * 移除冗余move指令。
      */
     private void moveSimplify() {

@@ -25,7 +25,7 @@ public class Record {
         curOffset = 0;
     }
 
-    /***
+    /**
      * 添加value到记录，并返回其offset。
      */
     public int addValue(Value value) {
@@ -39,21 +39,21 @@ public class Record {
         return offset;
     }
 
-    /***
+    /**
      * 添加value到记录，指定其offset。用于解析zext命令。
      */
     public void addValueWithOffset(Value value, int offset) {
         valueOffsetMap.put(value, offset);
     }
 
-    /***
+    /**
      * 查找value的offset。
      */
     public int getOffsetOfValue(Value value) {
         return valueOffsetMap.get(value);
     }
 
-    /***
+    /**
      * 添加reg到记录，并返回其offset。
      */
     public int addReg(Reg reg) {
@@ -63,14 +63,14 @@ public class Record {
         return offset;
     }
 
-    /***
+    /**
      * 查找reg的offset。
      */
     public int getOffsetOfReg(Reg reg) {
         return regOffsetMap.get(reg);
     }
 
-    /***
+    /**
      * 向record中插入数组，并返回数组首元素地址。
      * @param allocaInst 分配数组指令。
      * @return 数组首元素sp偏移量。

@@ -14,7 +14,7 @@ public class DeadCodeRemove implements IRPass {
     private final Module module;
     private final HashSet<Inst> usefulInstClosure;
 
-    /***
+    /**
      * 死代码删除。
      */
     public DeadCodeRemove() {

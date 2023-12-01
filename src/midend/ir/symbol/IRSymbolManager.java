@@ -3,7 +3,7 @@ package midend.ir.symbol;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-/***
+/**
  * 中间代码生成阶段的符号表。
  */
 public class IRSymbolManager {

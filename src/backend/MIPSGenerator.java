@@ -793,7 +793,7 @@ public class MIPSGenerator {
                         // li $toReg 0
                         LiInst liInst = new LiInst(toReg, 0);
                         mipsBuilder.addAsm(liInst);
-                    } else if (constantVal == 1 || constantVal == -1) {  // 若常数因子为1, 可以优化为lw或move // 若常数因子为-1, 可以优化为lw+subu 或 subu
+                    } else if (constantVal == 1) {  // 若常数因子为1, 可以优化为lw或move
                         if (op.notInReg()) {
                             // lw $toReg offset($sp)
                             loadValueToReg(op, toReg);
@@ -802,7 +802,14 @@ public class MIPSGenerator {
                             MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, opReg);
                             mipsBuilder.addAsm(moveMIPSInst);
                         }
-                        if (constantVal == -1) {
+                    } else if (constantVal == -1) { // 若常数因子为-1, 可以优化为lw+subu 或 subu
+                        if (op.notInReg()) {
+                            // lw $toReg offset($sp)
+                            loadValueToReg(op, toReg);
+                            // subu $toReg $zero $toReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                            mipsBuilder.addAsm(subuInst);
+                        } else {
                             // subu $toReg $zero $opReg
                             SubuInst subuInst = new SubuInst(toReg, Reg.zero, opReg);
                             mipsBuilder.addAsm(subuInst);
@@ -967,6 +974,132 @@ public class MIPSGenerator {
                     // li $toReg res
                     LiInst liInst = new LiInst(toReg, res);
                     mipsBuilder.addAsm(liInst);
+                } else if (op2 instanceof Constant constantDivisor) {  // 如果只有除数是常数
+                    int constantDivisorVal = constantDivisor.getValue();
+                    if (constantDivisorVal == 1) {     // 除数为1
+                        if (op1.notInReg()) {
+                            // lw $toReg offset($sp)
+                            loadValueToReg(op1, toReg);
+                        } else {
+                            // move $toReg $op1Reg
+                            MoveMIPSInst moveMIPSInst = new MoveMIPSInst(toReg, op1Reg);
+                            mipsBuilder.addAsm(moveMIPSInst);
+                        }
+                    } else if (constantDivisorVal == -1) {     // 除数为-1
+                        if (op1.notInReg()) {
+                            // lw $toReg offset($sp)
+                            loadValueToReg(op1, toReg);
+                            // subu $toReg $zero $toReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                            mipsBuilder.addAsm(subuInst);
+                        } else {
+                            // subu $toReg $zero $op1Reg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.zero, op1Reg);
+                            mipsBuilder.addAsm(subuInst);
+                        }
+                    } else if (constantDivisorVal >= 2 && isPowerOfTwo(constantDivisorVal)) {     // a/(2^n) 优化成 a>>n
+                        int n = getPowerOfTwo(constantDivisorVal);
+                        if (op1.notInReg()) {
+                            loadValueToReg(op1, op1Reg);
+                        }
+                        // sra $t2 $op1Reg 31   加数 = 原被除数 >> 31（算数右移）
+                        SraInst sraInst = new SraInst(Reg.t2, op1Reg, 31);
+                        mipsBuilder.addAsm(sraInst);
+                        // srl $t2 $t2 (32-n)        加数 = 加数 >> (32-n) （逻辑右移）
+                        SrlInst srlInst = new SrlInst(Reg.t2, Reg.t2, 32 - n);
+                        mipsBuilder.addAsm(srlInst);
+                        // addu $t2 $op1Reg $t2 新被除数 = 原被除数 + 加数
+                        AdduInst adduInst = new AdduInst(Reg.t2, op1Reg, Reg.t2);
+                        mipsBuilder.addAsm(adduInst);
+                        // sra $toReg $t2 n     商 = 新被除数 >> n (算数右移)
+                        SraInst sraInst1 = new SraInst(toReg, Reg.t2, n);
+                        mipsBuilder.addAsm(sraInst1);
+                    } else if (constantDivisorVal <= -2 && isPowerOfTwo(-constantDivisorVal)) {   // a/(-2^n) 优化成 -(a>>n)
+                        int n = getPowerOfTwo(-constantDivisorVal);
+                        if (op1.notInReg()) {
+                            loadValueToReg(op1, op1Reg);
+                        }
+                        // sra $t2 $op1Reg 31   加数 = 原被除数 >> 31（算数右移）
+                        SraInst sraInst = new SraInst(Reg.t2, op1Reg, 31);
+                        mipsBuilder.addAsm(sraInst);
+                        // srl $t2 $t2 (32-n)        加数 = 加数 >> (32-n) （逻辑右移）
+                        SrlInst srlInst = new SrlInst(Reg.t2, Reg.t2, 32 - n);
+                        mipsBuilder.addAsm(srlInst);
+                        // addu $t2 $op1Reg $t2 新被除数 = 原被除数 + 加数
+                        AdduInst adduInst = new AdduInst(Reg.t2, op1Reg, Reg.t2);
+                        mipsBuilder.addAsm(adduInst);
+                        // sra $toReg $t2 n     商 = 新被除数 >> n (算数右移)
+                        SraInst sraInst1 = new SraInst(toReg, Reg.t2, n);
+                        mipsBuilder.addAsm(sraInst1);
+                        // subu $toReg $zero $toReg
+                        SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                        mipsBuilder.addAsm(subuInst);
+                    } else {    // 进行除常数优化
+                        int abs = constantDivisorVal >= 0 ? constantDivisorVal : -constantDivisorVal;
+                        // nc = 2^31 - 2^31 % abs - 1
+                        long nc = (1L << 31) - ((1L << 31) % abs) - 1;
+                        long p = 32;
+                        // 2^p > (2^31 - 2^31 % abs - 1) * (abs - 2^p % abs)
+                        while ((1L << p) <= nc * (abs - (1L << p) % abs)) {
+                            p++;
+                        }
+                        // m = (2^p + abs - 2^p % abs) / abs    即m是2^p/abs向上取整
+                        long m = ((1L << p) + abs - (1L << p) % abs) / abs;
+                        // n = m[31:0]
+                        int n = (int) ((m << 32) >>> 32);
+                        int shift = (int) (p - 32);
+
+                        Reg temp0 = Reg.t1;
+                        Reg temp1 = Reg.t2;
+
+                        // li $tmp0 n
+                        LiInst liInst = new LiInst(temp0, n);
+                        mipsBuilder.addAsm(liInst);
+
+                        if (m >= 0x80000000L) { // temp1 = op1 + (op1*n)[63:32]
+                            // mthi $op1Reg
+                            MthiInst mthiInst = new MthiInst(op1Reg);
+                            mipsBuilder.addAsm(mthiInst);
+
+                            // madd $op1Reg $temp0
+                            MaddInst maddInst = new MaddInst(op1Reg, temp0);
+                            mipsBuilder.addAsm(maddInst);
+
+                            // mfhi $temp1
+                            MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, temp1);
+                            mipsBuilder.addAsm(mfhiInst);
+                        } else {    // temp1 = (op1*n)[63:32]
+                            // mult $op1Reg $temp0
+                            MultInst multInst = new MultInst(op1Reg, temp0);
+                            mipsBuilder.addAsm(multInst);
+
+                            // mfhi $temp1
+                            MfHiloInst mfhiInst = new MfHiloInst(Opcode.mfhi, temp1);
+                            mipsBuilder.addAsm(mfhiInst);
+                        }
+                        // 最后，to = (temp1>>shift) + (op1>>31)
+                        // sra $temp1 $temp1 shift
+                        SraInst sraInst = new SraInst(temp1, temp1, shift);
+                        mipsBuilder.addAsm(sraInst);
+
+                        // srl $temp0 $op1Reg 31
+                        SrlInst srlInst = new SrlInst(temp0, op1Reg, 31);
+                        mipsBuilder.addAsm(srlInst);
+
+                        // addu $toReg $temp1 $temp0
+                        AdduInst adduInst = new AdduInst(toReg, temp1, temp0);
+                        mipsBuilder.addAsm(adduInst);
+
+                        if (constantDivisorVal < 0) {
+                            // subu $toReg $zero $toReg
+                            SubuInst subuInst = new SubuInst(toReg, Reg.zero, toReg);
+                            mipsBuilder.addAsm(subuInst);
+                        }
+                    }
+                } else if (op1 instanceof Constant constant && constant.getValue() == 0) {  // 如果被除数是0，优化成li
+                    // li $toReg 0
+                    LiInst liInst = new LiInst(toReg, 0);
+                    mipsBuilder.addAsm(liInst);
                 } else {
                     if (op1 instanceof Constant constant) {
                         // li $op1Reg constant
@@ -975,11 +1108,7 @@ public class MIPSGenerator {
                     } else if (op1.notInReg()) {
                         loadValueToReg(op1, op1Reg);
                     }
-                    if (op2 instanceof Constant constant) {
-                        // li $op2Reg constant
-                        LiInst liInst = new LiInst(op2Reg, constant.getValue());
-                        mipsBuilder.addAsm(liInst);
-                    } else if (op2.notInReg()) {
+                    if (op2.notInReg()) {
                         loadValueToReg(op2, op2Reg);
                     }
                     // div $op1Reg $op2Reg

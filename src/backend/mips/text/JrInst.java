@@ -7,7 +7,7 @@ public class JrInst extends Asm {
     private final Opcode opcode;
     private final Reg reg;
 
-    /***
+    /**
      * jr $reg
      */
     public JrInst(Reg reg) {

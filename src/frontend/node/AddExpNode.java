@@ -32,8 +32,9 @@ public class AddExpNode extends Node {
         if (addExpNode == null) {
             sb.append(mulExpNode.toString());
         } else {
+            assert op != null;
             sb.append(addExpNode);
-            sb.append(op.toString());
+            sb.append(op);
             sb.append(mulExpNode.toString());
         }
         sb.append("<AddExp>\n");
@@ -62,14 +63,16 @@ public class AddExpNode extends Node {
         return op;
     }
 
-    /***
+    /**
      * 计算表达式的值。
+     *
      * @return int 型的计算结果。
      */
     public int calVal() {
         if (addExpNode == null) {   // AddExp → MulExp
             return mulExpNode.calVal();
         } else {    // AddExp → AddExp ('+' | '−') MulExp
+            assert op != null;
             if (op.getType() == TokenType.PLUS) {
                 return addExpNode.calVal() + mulExpNode.calVal();
             } else {

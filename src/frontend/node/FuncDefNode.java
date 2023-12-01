@@ -10,7 +10,7 @@ public class FuncDefNode extends Node {
     private final Token rightParen;
     private final BlockNode blockNode;
 
-    /***
+    /**
      *
      * @param funcFParamsNode   无形参时为null。
      */

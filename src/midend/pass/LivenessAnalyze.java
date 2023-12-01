@@ -15,7 +15,7 @@ import java.util.Objects;
 public class LivenessAnalyze implements IRPass {
     private final Module module;
 
-    /***
+    /**
      * 变量的活跃范围分析。
      */
     public LivenessAnalyze() {
@@ -31,7 +31,7 @@ public class LivenessAnalyze implements IRPass {
         }
     }
 
-    /***
+    /**
      * 反向遍历ir所有指令，生成每条指令的liveIn和liveOut。
      * 特别地。如果循环体头部遍历完，且其liveIn与循环体尾部liveOut所含元素不相等，需要将其liveIn加到该循环体尾部的liveOut，并跳回循环体尾部。每个循环头只返回尾部一次。
      */
@@ -111,7 +111,7 @@ public class LivenessAnalyze implements IRPass {
         }
     }
 
-    /***
+    /**
      * 找到move.to第一次出现的语句。
      */
     private Inst getMoveTargetFisrtAppearInst(Function function, MoveInst moveInst) {

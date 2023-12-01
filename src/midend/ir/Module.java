@@ -14,7 +14,7 @@ public class Module extends Value {
         return instance;
     }
 
-    /***
+    /**
      * 全局声明列表，包括globalVar(非数组)和globalArray(数组)。
      */
     private final ArrayList<Value> globals;

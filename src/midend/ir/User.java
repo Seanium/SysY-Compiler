@@ -60,7 +60,7 @@ public class User extends Value {
      * 删除该user作为其operand的user的信息。
      * 即在该user的每个operand的user列表中，去除该user。
      */
-    public void delThisUserFromAllOperand() {
+    public void delThisUserFromAllOperands() {
         for (Value operand : operandList) {
             operand.userList.removeIf(this::equals);
         }

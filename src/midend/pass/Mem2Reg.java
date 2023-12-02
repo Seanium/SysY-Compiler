@@ -112,7 +112,7 @@ public class Mem2Reg implements IRPass {
                     continue;
                 }
                 if (funcAllocaInstsMap.get(function).contains(allocaInst)) {
-                    loadInst.replaceOperandOfAllUser(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
+                    loadInst.replaceAllUsesWith(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
                     iterator.remove(); // 删除指令
                 }
             } else if (inst instanceof StoreInst storeInst) {

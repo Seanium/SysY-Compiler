@@ -34,7 +34,7 @@ public class DeadCodeRemove implements IRPass {
         return inst instanceof JumpInst ||
                 inst instanceof BranchInst ||
                 inst instanceof ReturnInst ||
-                inst instanceof CallInst ||
+                inst instanceof CallInst callInst && callInst.getTargetFunc().hasSideEffect() ||
                 inst instanceof StoreInst;
     }
 
@@ -55,7 +55,7 @@ public class DeadCodeRemove implements IRPass {
                 Inst inst = iterator.next();
                 if (!usefulInstClosure.contains(inst)) {
                     iterator.remove();
-                    inst.delThisUserFromAllOperand();  // 删除该指令作为user的信息
+                    inst.delThisUserFromAllOperands();  // 删除该指令作为user的信息
                 }
             }
         }

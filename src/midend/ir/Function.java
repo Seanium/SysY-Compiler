@@ -3,6 +3,7 @@ package midend.ir;
 import midend.ir.type.Type;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 
 public class Function extends Value {
@@ -14,6 +15,11 @@ public class Function extends Value {
      * 该函数所有的变量。也就是要分配寄存器的value。
      */
     private final LinkedHashSet<Value> vars;
+    private boolean hasSideEffect;
+    /**
+     * 该函数所调用的函数集合。
+     */
+    private HashSet<Function> callees;
 
     /**
      * @param name 函数名。
@@ -25,10 +31,13 @@ public class Function extends Value {
         this.params = new ArrayList<>();
         this.isLib = false;
         this.vars = new LinkedHashSet<>();
+        this.hasSideEffect = true;
+        this.callees = new HashSet<>();
     }
 
     /**
      * 添加形参到形参列表。如果没有形参，则不必调用该函数。
+     *
      * @param param 要添加的形参。
      */
     public void addParam(Param param) {
@@ -60,6 +69,22 @@ public class Function extends Value {
 
     public LinkedHashSet<Value> getVars() {
         return vars;
+    }
+
+    public boolean hasSideEffect() {
+        return hasSideEffect;
+    }
+
+    public void setHasSideEffect(boolean hasSideEffect) {
+        this.hasSideEffect = hasSideEffect;
+    }
+
+    public void addCallee(Function callee) {
+        callees.add(callee);
+    }
+
+    public HashSet<Function> getCallees() {
+        return callees;
     }
 
     @Override

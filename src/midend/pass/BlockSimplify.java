@@ -50,7 +50,7 @@ public class BlockSimplify implements IRPass {
                 Inst inst = iterator.next();
                 if (allowRemove) {
                     iterator.remove();
-                    inst.delThisUserFromAllOperand();  // 指令被删除后，还需删除该指令作为其他指令user的信息
+                    inst.delThisUserFromAllOperands();  // 指令被删除后，还需删除该指令作为其他指令user的信息
                 } else if (inst instanceof BranchInst || inst instanceof JumpInst || inst instanceof ReturnInst) {
                     allowRemove = true; // 首条br/ret之后的指令均需要删除
                 }

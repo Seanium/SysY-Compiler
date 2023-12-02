@@ -147,7 +147,7 @@ public class FuncInline implements IRPass {
         ArrayList<Value> args = callInst.getArgs();
         assert params.size() == args.size() : "错误，形参与实参数量不同。";
         for (int i = 0; i < params.size(); i++) {
-            params.get(i).replaceOperandOfAllUser(args.get(i));
+            params.get(i).replaceAllUsesWith(args.get(i));
         }
 
         // 第五步 若callee有返回值且call语句有赋值，在sucBlock开头插入phi指令
@@ -162,7 +162,7 @@ public class FuncInline implements IRPass {
             }
             PhiInst phiInst = new PhiInst(callInst.getName(), cfgPreListOfSucBlock, options);
             sucBlock.addInstAtFirst(phiInst);
-            callInst.replaceOperandOfAllUser(phiInst);  // 把之后对call的使用全部换成对phi的使用
+            callInst.replaceAllUsesWith(phiInst);  // 把之后对call的使用全部换成对phi的使用
         }
 
         // 第六步 将preBlock末尾的call替换为br，把calleeCopy中的ret替换为br到sucBlock

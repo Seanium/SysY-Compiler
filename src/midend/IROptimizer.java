@@ -29,6 +29,7 @@ public class IROptimizer {
         FileIO.write("llvm_ir_inline.txt", module.toString());
         new DomAnalyze().run(); // mem2Reg前，要计算支配边界
         new Mem2Reg().run();
+        new FuncSideEffectAnalyze().run();
         new DeadCodeRemove().run();
         FileIO.write("llvm_ir.txt", module.toString());
         new PhiRemove().run();

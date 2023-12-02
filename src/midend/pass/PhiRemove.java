@@ -65,7 +65,7 @@ public class PhiRemove implements IRPass {
                 MoveInst moveInst0 = new MoveInst(a0phi, a0Temp);
                 B0.getBeginMoves().add(moveInst0);  // 向后继基本块添加a0 = a0Temp
                 iterator.remove();  // 删除phi指令
-                a0phi.replaceOperandOfAllUser(moveInst0.getTo());    // 把之后对a0phi的使用改为对moveInst0.to的使用
+                a0phi.replaceAllUsesWith(moveInst0.getTo());    // 把之后对a0phi的使用改为对moveInst0.to的使用
             }
         }
 //        for (BasicBlock basicBlock : basicBlocks) {

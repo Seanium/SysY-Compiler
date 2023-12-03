@@ -27,7 +27,10 @@ public class FuncCopier {
         for (BasicBlock srcBlock : srcBlocks) {
             BasicBlock copyBlock = new BasicBlock(srcBlock.getName(), copyFunc);
             copyBlocks.add(copyBlock);   // 添加基本块到函数
-            copyBlock.setParentFunction(copyFunc);  // 设置基本块的所属函数
+            copyBlock.setParentFunc(copyFunc);  // 设置基本块的所属函数
+            // 拷贝循环头尾信息, 供内联后循环深度分析使用
+            copyBlock.setLoopHead(srcBlock.isLoopHead());
+            copyBlock.setLoopTail(srcBlock.isLoopTail());
             copyMap.put(srcBlock, copyBlock);   // 添加基本块到copyMap
         }
         // 维护前驱后继关系
@@ -50,7 +53,7 @@ public class FuncCopier {
                 Inst copyInst = copyInst(srcInst);
                 BasicBlock copyBlock = (BasicBlock) copyMap.get(srcBlock);
                 copyBlock.getInsts().add(copyInst); // 添加指令到基本块
-                copyInst.setParentBasicBlock(copyBlock);    // 设置所属基本块
+                copyInst.setParentBlock(copyBlock);    // 设置所属基本块
                 copyMap.put(srcInst, copyInst); // 添加指令到copyMap
             }
         }
@@ -102,7 +105,7 @@ public class FuncCopier {
             copyInst = new JumpInst((BasicBlock) findValue(jumpInst.getTargetBasicBlock()));
         } else if (srcInst instanceof LoadInst loadInst) {
             copyInst = new LoadInst(loadInst.getName(), findValue(loadInst.getPointer()));
-        } else if (srcInst instanceof MoveInst moveInst) {
+        } else if (srcInst instanceof MoveInst moveInst) {  // 永远不会进入此分支，因为消phi后才出现move
             copyInst = new MoveInst(findValue(moveInst.getTo()), findValue(moveInst.getFrom()));
         } else if (srcInst instanceof PhiInst phiInst) {
             ArrayList<BasicBlock> cfgPreList = new ArrayList<>();

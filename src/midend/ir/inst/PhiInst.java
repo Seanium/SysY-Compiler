@@ -35,6 +35,9 @@ public class PhiInst extends Inst {
 
     public void addOption(Value option, BasicBlock pre) {
         int index = cfgPreList.indexOf(pre);
+        if (operandList.get(index) != null) {   // 如果该下标已经有选项，则需要先删除phi作为其user的信息
+            operandList.get(index).getUserList().remove(this);
+        }
         operandList.set(index, option);
         option.addUser(this);   // 未调用addOperand，需手动addUser
     }

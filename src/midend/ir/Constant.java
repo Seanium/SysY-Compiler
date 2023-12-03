@@ -14,4 +14,22 @@ public class Constant extends Value {
     public int getValue() {
         return value;
     }
+
+    /**
+     * 用于GVN时的公共子表达式合并。
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Constant constant = (Constant) o;
+
+        return value == constant.value;
+    }
+
+    @Override
+    public int hashCode() {
+        return value;
+    }
 }

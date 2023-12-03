@@ -657,6 +657,9 @@ public class IRGenerator {
             }
             // 创建无条件跳转指令 跳转到condBlock
             JumpInst jumpInst2 = new JumpInst(condBlock);
+            // condBlock是循环头, forStmt2Block是循环尾
+            condBlock.setLoopHead(true);
+            forStmt2Block.setLoopTail(true);
             // 添加指令到当前基本块
             irBuilder.addInstToCurBasicBlock(jumpInst2);
 
@@ -941,7 +944,6 @@ public class IRGenerator {
     // | UnaryOp UnaryExp // 存在即可
 
     /**
-     *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
     private Value visitUnaryExpNode(UnaryExpNode unaryExpNode) {
@@ -1018,7 +1020,6 @@ public class IRGenerator {
     //【消除左递归】 MulExp → UnaryExp  {('*' | '/' | '%') UnaryExp}
 
     /**
-     *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
     private Value visitMulExpNode(MulExpNode mulExpNode) {
@@ -1067,7 +1068,6 @@ public class IRGenerator {
     // 【消除左递归】 AddExp → MulExp {('+' | '−') MulExp}
 
     /**
-     *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
     private Value visitAddExpNode(AddExpNode addExpNode) {
@@ -1114,7 +1114,6 @@ public class IRGenerator {
     // 【消除左递归】 RelExp → AddExp { ('<' | '>' | '<=' | '>=') AddExp}
 
     /**
-     *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
     private Value visitRelExpNode(RelExpNode relExpNode) {
@@ -1167,7 +1166,6 @@ public class IRGenerator {
     // 【消除左递归】 EqExp → RelExp { ('==' | '!=') RelExp}
 
     /**
-     *
      * @return 返回值type可能为i1或i32，调用该方法后请注意类型转换
      */
     private Value visitEqExpNode(EqExpNode eqExpNode) {
@@ -1299,6 +1297,7 @@ public class IRGenerator {
 
     /**
      * 计算常量表达式的值。
+     *
      * @return 常量表达式的值。
      */
     int visitConstExpNode(ConstExpNode constExpNode) {

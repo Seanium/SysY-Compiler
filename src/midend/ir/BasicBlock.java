@@ -7,7 +7,7 @@ import midend.ir.type.OtherType;
 import java.util.ArrayList;
 
 public class BasicBlock extends Value {
-    private Function parentFunction;
+    private Function parentFunc;
     private final ArrayList<Inst> insts;
     /**
      * CFG中，该基本块的前驱基本块列表。
@@ -42,6 +42,10 @@ public class BasicBlock extends Value {
      */
     private BasicBlock immDomBy;
     /**
+     * 直接支配树深度。
+     */
+    private int immDomDepth;
+    /**
      * 该基本块的严格支配边界。
      */
     private final ArrayList<BasicBlock> dfList;
@@ -53,10 +57,22 @@ public class BasicBlock extends Value {
      * 基本块末尾的move指令集合。
      */
     private final ArrayList<MoveInst> endMoves;
+    /**
+     * 是否为循环头。
+     */
+    private boolean isLoopHead;
+    /**
+     * 是否为循环尾。
+     */
+    private boolean isLoopTail;
+    /**
+     * 循环深度。
+     */
+    private int loopDepth;
 
-    public BasicBlock(String name, Function parentFunction) {
+    public BasicBlock(String name, Function parentFunc) {
         super(OtherType.basicBlock, name);  // 基本块的 name 就是其 label
-        this.parentFunction = parentFunction;
+        this.parentFunc = parentFunc;
         this.insts = new ArrayList<>();
         this.cfgPreList = new ArrayList<>();
         this.cfgSucList = new ArrayList<>();
@@ -69,6 +85,9 @@ public class BasicBlock extends Value {
         this.dfList = new ArrayList<>();
         this.beginMoves = new ArrayList<>();
         this.endMoves = new ArrayList<>();
+        this.isLoopHead = false;
+        this.isLoopTail = false;
+        this.loopDepth = 0;
     }
 
     /**
@@ -91,7 +110,7 @@ public class BasicBlock extends Value {
      */
     public void addInstAtLast(Inst inst) {
         insts.add(inst);
-        inst.setParentBasicBlock(this);
+        inst.setParentBlock(this);
     }
 
     /**
@@ -99,13 +118,13 @@ public class BasicBlock extends Value {
      */
     public void addInstAtFirst(Inst inst) {
         insts.add(0, inst);
-        inst.setParentBasicBlock(this);
+        inst.setParentBlock(this);
     }
 
     public void addInsts(int index, ArrayList<? extends Inst> insts) {
         this.insts.addAll(index, insts);
         for (Inst inst : insts) {
-            inst.setParentBasicBlock(this);
+            inst.setParentBlock(this);
         }
     }
 
@@ -175,12 +194,44 @@ public class BasicBlock extends Value {
         return endMoves;
     }
 
-    public Function getParentFunction() {
-        return parentFunction;
+    public Function getParentFunc() {
+        return parentFunc;
     }
 
-    public void setParentFunction(Function parentFunction) {
-        this.parentFunction = parentFunction;
+    public void setParentFunc(Function parentFunc) {
+        this.parentFunc = parentFunc;
+    }
+
+    public int getImmDomDepth() {
+        return immDomDepth;
+    }
+
+    public void setImmDomDepth(int immDomDepth) {
+        this.immDomDepth = immDomDepth;
+    }
+
+    public boolean isLoopHead() {
+        return isLoopHead;
+    }
+
+    public void setLoopHead(boolean loopHead) {
+        isLoopHead = loopHead;
+    }
+
+    public boolean isLoopTail() {
+        return isLoopTail;
+    }
+
+    public void setLoopTail(boolean loopTail) {
+        isLoopTail = loopTail;
+    }
+
+    public int getLoopDepth() {
+        return loopDepth;
+    }
+
+    public void setLoopDepth(int loopDepth) {
+        this.loopDepth = loopDepth;
     }
 
     @Override

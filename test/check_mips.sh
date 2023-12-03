@@ -4,7 +4,7 @@
 #my_mips_output_dir="my_mips_output_2022/A/"
 example_dir="2023代码生成辅助库/A/"
 my_mips_output_dir="my_mips_output/A/"
-file_index_begin=1
+file_index_begin=11
 file_index_end=15 #A
 #file_index_end=18 #B,C
 

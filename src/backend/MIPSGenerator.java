@@ -344,7 +344,7 @@ public class MIPSGenerator {
         if (!callInst.getTargetFunc().isLib()) {    // 不是库函数
             /* 第一步 保存活跃寄存器、ra和sp */
             ArrayList<Reg> activeRegs = callInst.getActiveRegs();
-            ArrayList<Inst> insts = callInst.getParentBasicBlock().getInsts();
+            ArrayList<Inst> insts = callInst.getParentBlock().getInsts();
             Inst nextInst = insts.get(insts.indexOf(callInst) + 1);
             // 需要保存的寄存器是当前指令和下条指令活跃寄存器的交集
             activeRegs.retainAll(nextInst.getActiveRegs());

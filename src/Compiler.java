@@ -62,9 +62,6 @@ public class Compiler {
 //        6.中端优化
         IROptimizer irOptimizer = IROptimizer.getInstance();
         irOptimizer.runPasses();
-        if (Config.getMode() == Config.Mode.DEBUG) {
-            FileIO.write("llvm_ir_move.txt", module.toString());
-        }
 
 //        7.目标代码生成 (MIPS)(仅中端优化)
         mipsGenerator = new MIPSGenerator();

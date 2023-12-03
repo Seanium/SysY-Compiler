@@ -66,7 +66,7 @@ public class Mem2Reg implements IRPass {
                     // 填充map
                     for (User user : allocaInst.getUserList()) {
                         if (user instanceof StoreInst storeInst) {  // store是该alloca变量的再定义点
-                            allocaDefBlocksMap.get(allocaInst).add(storeInst.getParentBasicBlock());
+                            allocaDefBlocksMap.get(allocaInst).add(storeInst.getParentBlock());
                         }
                     }
                 }
@@ -107,6 +107,7 @@ public class Mem2Reg implements IRPass {
             Inst inst = iterator.next();
             if (inst instanceof AllocaInst allocaInst && funcAllocaInstsMap.get(function).contains(allocaInst)) {
                 iterator.remove(); // 删除指令
+                inst.delThisUserFromAllOperands();
             } else if (inst instanceof LoadInst loadInst) {
                 if (!(loadInst.getPointer() instanceof AllocaInst allocaInst)) {
                     continue;
@@ -114,6 +115,7 @@ public class Mem2Reg implements IRPass {
                 if (funcAllocaInstsMap.get(function).contains(allocaInst)) {
                     loadInst.replaceAllUsesWith(allocaIncomingValueMap.get(allocaInst).peek()); // 把后续对load使用更新为对对应alloca变量的最新到达定义的使用
                     iterator.remove(); // 删除指令
+                    inst.delThisUserFromAllOperands();
                 }
             } else if (inst instanceof StoreInst storeInst) {
                 if (!(storeInst.getTo() instanceof AllocaInst allocaInst)) {
@@ -123,6 +125,7 @@ public class Mem2Reg implements IRPass {
                     allocaIncomingValueMap.get(allocaInst).push(storeInst.getFrom()); // 更新到达定义
                     pushCnt.put(allocaInst, pushCnt.getOrDefault(allocaInst, 0) + 1);   // 入栈计数++
                     iterator.remove(); // 删除指令
+                    inst.delThisUserFromAllOperands();
                 }
             } else if (inst instanceof PhiInst phiInst) {
                 if (phiAllocaMap.containsKey(phiInst)) {

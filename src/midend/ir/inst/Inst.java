@@ -11,24 +11,29 @@ import java.util.LinkedHashSet;
 
 public class Inst extends User {
     protected Opcode opcode;
-    private BasicBlock parentBasicBlock;
+    private BasicBlock parentBlock;
     private int id;
     private final LinkedHashSet<Value> liveDef;
     private final LinkedHashSet<Value> liveUse;
     private final LinkedHashSet<Value> liveIn;
     private final LinkedHashSet<Value> liveOut;
     private final ArrayList<Reg> activeRegs;
+    /**
+     * 该指令的schedule early块。
+     */
+    private BasicBlock earlyBlock;
 
     public Inst(Type type, String name, Opcode opcode) {
         super(type, name);
         this.opcode = opcode;
-        this.parentBasicBlock = null;
+        this.parentBlock = null;
         this.id = 0;
         this.liveDef = new LinkedHashSet<>();
         this.liveUse = new LinkedHashSet<>();
         this.liveIn = new LinkedHashSet<>();
         this.liveOut = new LinkedHashSet<>();
         this.activeRegs = new ArrayList<>();
+        this.earlyBlock = null;
     }
 
     public int getId() {
@@ -39,12 +44,12 @@ public class Inst extends User {
         this.id = id;
     }
 
-    public BasicBlock getParentBasicBlock() {
-        return parentBasicBlock;
+    public BasicBlock getParentBlock() {
+        return parentBlock;
     }
 
-    public void setParentBasicBlock(BasicBlock parentBasicBlock) {
-        this.parentBasicBlock = parentBasicBlock;
+    public void setParentBlock(BasicBlock parentBlock) {
+        this.parentBlock = parentBlock;
     }
 
     public Opcode getOpcode() {
@@ -69,5 +74,13 @@ public class Inst extends User {
 
     public ArrayList<Reg> getActiveRegs() {
         return activeRegs;
+    }
+
+    public BasicBlock getEarlyBlock() {
+        return earlyBlock;
+    }
+
+    public void setEarlyBlock(BasicBlock earlyBlock) {
+        this.earlyBlock = earlyBlock;
     }
 }

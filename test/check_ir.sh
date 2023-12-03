@@ -1,10 +1,10 @@
 #!/bin/bash
 
-example_dir="2023代码生成辅助库/A/"
-my_ir_output_dir="my_ir_output/A/"
+example_dir="2023代码生成辅助库/C/"
+my_ir_output_dir="my_ir_output/C/"
 file_index_begin=1
-file_index_end=15 #A
-#file_index_end=18 #B,C
+#file_index_end=15 #A
+file_index_end=18 #B,C
 
 jar_file="../out/artifacts/compiler_jar/compiler.jar"
 

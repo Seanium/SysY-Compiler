@@ -60,9 +60,10 @@ public class DomAnalyze implements IRPass {
 
     /**
      * 计算不经过dominator结点时，能访问到的所有结点。
-     * @param entry 入口基本块。
+     *
+     * @param entry     入口基本块。
      * @param dominator 待计算其dom列表的dominator，即dfs中要“删除”的结点。
-     * @param visited CFG中，去掉dominator结点后，能访问到的节点集合。
+     * @param visited   CFG中，去掉dominator结点后，能访问到的节点集合。
      */
     private void visit(BasicBlock entry, BasicBlock dominator, HashSet<BasicBlock> visited) {
         if (entry.equals(dominator)) {
@@ -115,6 +116,18 @@ public class DomAnalyze implements IRPass {
                     n.setImmDomBy(m);
                 }
             }
+        }
+        // 四、计算直接支配树深度
+        calImmDomDepth(entry, 0);
+    }
+
+    /**
+     * 计算直接支配树深度。
+     */
+    private void calImmDomDepth(BasicBlock basicBlock, int depth) {
+        basicBlock.setImmDomDepth(depth);
+        for (BasicBlock basicBlock1 : basicBlock.getImmDomList()) {
+            calImmDomDepth(basicBlock1, depth + 1);
         }
     }
 

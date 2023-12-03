@@ -113,8 +113,8 @@ public class FuncInline implements IRPass {
      */
     private void replaceCall(CallInst callInst, int callId) {
         // 第一步 新建基本块sucBlock，插入到callInst所在的基本块preBlock后面
-        BasicBlock preBlock = callInst.getParentBasicBlock();
-        Function caller = preBlock.getParentFunction();
+        BasicBlock preBlock = callInst.getParentBlock();
+        Function caller = preBlock.getParentFunc();
         Function callee = callInst.getTargetFunc();
         FuncCopier funcCopier = new FuncCopier();
         Function calleeCopy = funcCopier.copyFunc(callee);   // 克隆callee
@@ -127,7 +127,7 @@ public class FuncInline implements IRPass {
         ArrayList<Inst> instsToMove = new ArrayList<>();
         for (int i = preBlockInsts.indexOf(callInst) + 1; i < preBlockInsts.size(); i++) {
             Inst inst = preBlockInsts.get(i);
-            inst.setParentBasicBlock(sucBlock);    // 更改指令所属基本块
+            inst.setParentBlock(sucBlock);    // 更改指令所属基本块
             instsToMove.add(inst);
         }
         preBlock.getInsts().removeAll(instsToMove);
@@ -136,7 +136,7 @@ public class FuncInline implements IRPass {
         // 第三步 将callee的全部基本块移到caller的preBlock后面
         ArrayList<BasicBlock> calleeCopyBlocks = calleeCopy.getBasicBlocks();
         for (BasicBlock basicBlock : calleeCopyBlocks) {
-            basicBlock.setParentFunction(caller);   // 更改基本块所属函数
+            basicBlock.setParentFunc(caller);   // 更改基本块所属函数
         }
         callerBlocks.addAll(callerBlocks.indexOf(preBlock) + 1, calleeCopyBlocks);
         preBlock.getCFGSucList().add(calleeCopyBlocks.get(0));  // 维护前驱后继信息

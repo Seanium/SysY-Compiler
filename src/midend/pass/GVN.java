@@ -49,8 +49,8 @@ public class GVN implements IRPass {
 
     private void runGVNInst(Inst inst) {
         if (!inst.getUserList().isEmpty()) {
-            Value simpVal = InstSimplifier.simplify(inst);  // 尝试做常量折叠
-            if (simpVal instanceof Inst) {  // 若常量折叠失败，则尝试消除公共子表达式
+            Value simpVal = InstSimplifier.simplify(inst);  // 尝试做指令化简（如常量折叠）
+            if (simpVal instanceof Inst) {  // 若化简失败，则尝试消除公共子表达式
                 simpVal = findNumberByValue(simpVal);
             }
             replaceValue(inst, simpVal);

@@ -550,7 +550,11 @@ public class MIPSGenerator {
     private void visitBranchInst(BranchInst branchInst) {
         Value cond = branchInst.getCond();
         Reg condReg = Reg.t0;
-        if (cond.notInReg()) {  // cond在内存中
+        if (cond instanceof Constant constant) {    // cond为常数
+            // li $t0 constant
+            LiInst liInst = new LiInst(Reg.t0, constant.getValue());
+            mipsBuilder.addAsm(liInst);
+        } else if (cond.notInReg()) {  // cond在内存中
             // lw $t0 offset($sp) 获取条件，存入t0
             int offset = mipsBuilder.getOffsetOfValue(cond);
             LwInst lwInst = new LwInst(Reg.t0, offset, Reg.sp);

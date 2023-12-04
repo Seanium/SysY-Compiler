@@ -7,9 +7,7 @@ import midend.ir.Value;
 import midend.ir.inst.*;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import static midend.ir.inst.IcmpInst.IcmpKind.*;
 
@@ -19,8 +17,6 @@ public class GVN implements IRPass {
      * 键是某个value，值是该value实际使用的value。
      */
     private final HashMap<Value, Value> valueNumberMap;
-    private final HashSet<BasicBlock> visited;
-    private final ArrayList<BasicBlock> order;
 
     /**
      * 全局值标号。Global Value Numbering.
@@ -28,8 +24,6 @@ public class GVN implements IRPass {
     public GVN() {
         this.module = Module.getInstance();
         this.valueNumberMap = new HashMap<>();
-        this.visited = new HashSet<>();
-        this.order = new ArrayList<>();
     }
 
     @Override
@@ -40,12 +34,8 @@ public class GVN implements IRPass {
     }
 
     private void runGVNFuc(Function function) {
-        order.clear();
-        visited.clear();
-        postOrderDFS(function.getBasicBlocks().get(0)); // 得到后序遍历顺序
-        Collections.reverse(order); // 得到逆后序遍历顺序
-        // 按逆后序遍历基本块
-        for (BasicBlock basicBlock : order) {
+        valueNumberMap.clear(); // map以函数为单位，每进入一个函数要清空
+        for (BasicBlock basicBlock : function.getBasicBlocks()) {
             runGVNBlock(basicBlock);
         }
     }
@@ -196,18 +186,5 @@ public class GVN implements IRPass {
             }
         }
         return a;
-    }
-
-    /**
-     * 后序遍历。
-     */
-    private void postOrderDFS(BasicBlock basicBlock) {
-        visited.add(basicBlock);
-        for (BasicBlock suc : basicBlock.getImmDomList()) {
-            if (!visited.contains(suc)) {
-                postOrderDFS(suc);
-            }
-        }
-        order.add(basicBlock);
     }
 }

@@ -167,15 +167,19 @@ public class FuncInline implements IRPass {
 
         // 第六步 将preBlock末尾的call替换为br，把calleeCopy中的ret替换为br到sucBlock
         preBlockInsts.remove(callInst);
+        callInst.delThisUserFromAllOperands();  //去除user信息
         JumpInst jumpInst = new JumpInst(calleeCopyBlocks.get(0));
+        jumpInst.setParentBlock(preBlock);  // 维护所属基本块
         preBlockInsts.add(jumpInst);
 
-        for (BasicBlock basicBlock : calleeCopyBlocks) {
-            if (basicBlock.getLastInst() instanceof ReturnInst returnInst) {
-                basicBlock.getInsts().remove(returnInst);
+        for (BasicBlock calleeCopyBlock : calleeCopyBlocks) {
+            if (calleeCopyBlock.getLastInst() instanceof ReturnInst returnInst) {
+                calleeCopyBlock.getInsts().remove(returnInst);  // 去除user信息
+                returnInst.delThisUserFromAllOperands();
                 JumpInst jumpInst1 = new JumpInst(sucBlock);
-                basicBlock.getInsts().add(jumpInst1);
-                basicBlock.getCFGSucList().add(sucBlock);   // 维护前驱后继信息
+                jumpInst1.setParentBlock(calleeCopyBlock);  // 维护所属基本块
+                calleeCopyBlock.getInsts().add(jumpInst1);
+                calleeCopyBlock.getCFGSucList().add(sucBlock);   // 维护前驱后继信息
                 sucBlock.getCFGPreList().add(preBlock);
             }
         }

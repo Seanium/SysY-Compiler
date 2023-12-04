@@ -17,7 +17,7 @@ public class GlobalVar extends User {
      * @param isConst    是否为全局常量
      */
     public GlobalVar(Type targetType, String name, Constant initValue, boolean isConst) {
-        super(new PointerType(targetType), "@g_" + name);  // type 是其右值类型，为指针类型
+        super(new PointerType(targetType), "@" + name + "_g");  // type 是其右值类型，为指针类型
         this.initValue = initValue;
         this.isConst = isConst;
     }

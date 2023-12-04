@@ -39,6 +39,8 @@ public class IROptimizer {
         new LoopDepthAnalyze().run();   // GCM前，要获得循环深度和直接支配树深度(后者已在前面的DomAnalyze得到)
         new GVN().run();
         FileIO.write("llvm_ir_gvn.txt", module.toString());
+        new DeadCodeRemove().run();
+        FileIO.write("llvm_ir_gvn_dce.txt", module.toString());
         new GCM().run();
         FileIO.write("llvm_ir.txt", module.toString());
 

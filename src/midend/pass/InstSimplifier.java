@@ -5,6 +5,9 @@ import midend.ir.Value;
 import midend.ir.inst.*;
 import midend.ir.type.IntegerType;
 
+/**
+ * 运算指令简化，包括常量折叠等。
+ */
 public class InstSimplifier {
     public static Value simplify(Inst inst) {
         if (inst.getOpcode() == Opcode.add) {
@@ -30,8 +33,48 @@ public class InstSimplifier {
         BinaryInst addInst = (BinaryInst) inst;
         Value op1 = addInst.getOperand1();
         Value op2 = addInst.getOperand2();
+        // 常量折叠
         if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
             return new Constant(IntegerType.i32, constant1.getValue() + constant2.getValue());
+        }
+        // 常数作为第二个操作数
+        if (op1 instanceof Constant) {
+            addInst.swapOperand();
+            op1 = addInst.getOperand1();
+            op2 = addInst.getOperand2();
+        }
+        // a+0 = a
+        if (op2 instanceof Constant constant && constant.getValue() == 0) {
+            return op1;
+        }
+        // a+(0-a) = 0
+        if (op2 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.sub &&
+                binaryInst.getOperand1() instanceof Constant constant && constant.getValue() == 0 &&
+                op1.equals(binaryInst.getOperand2())) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // (0-a)+a = 0
+        if (op1 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.sub &&
+                binaryInst.getOperand1() instanceof Constant constant && constant.getValue() == 0 &&
+                binaryInst.getOperand2().equals(op2)) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // (a-b)+(b-a) = 0
+        if (op1 instanceof BinaryInst binaryInst1 && binaryInst1.getOpcode() == Opcode.sub &&
+                op2 instanceof BinaryInst binaryInst2 && binaryInst2.getOpcode() == Opcode.sub &&
+                binaryInst1.getOperand1().equals(binaryInst2.getOperand2()) &&
+                binaryInst1.getOperand2().equals(binaryInst2.getOperand1())) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a+(b-a) = b
+        if (op2 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.sub &&
+                op1.equals(binaryInst.getOperand2())) {
+            return binaryInst.getOperand1();
+        }
+        // (b-a)+a = b
+        if (op1 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.sub &&
+                binaryInst.getOperand2().equals(op2)) {
+            return binaryInst.getOperand1();
         }
         return inst;
     }
@@ -40,8 +83,32 @@ public class InstSimplifier {
         BinaryInst subInst = (BinaryInst) inst;
         Value op1 = subInst.getOperand1();
         Value op2 = subInst.getOperand2();
+        // 常量折叠
         if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
             return new Constant(IntegerType.i32, constant1.getValue() - constant2.getValue());
+        }
+        // a-0 = a
+        if (op2 instanceof Constant constant && constant.getValue() == 0) {
+            return op1;
+        }
+        // a-a = 0
+        if (op1.equals(op2)) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a-(a-b) = b
+        if (op2 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.sub &&
+                op1.equals(binaryInst.getOperand1())) {
+            return binaryInst.getOperand2();
+        }
+        // (a+b)-a = b
+        if (op1 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.add &&
+                binaryInst.getOperand1().equals(op2)) {
+            return binaryInst.getOperand2();
+        }
+        // (a+b)-b = a
+        if (op1 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.add &&
+                binaryInst.getOperand2().equals(op2)) {
+            return binaryInst.getOperand1();
         }
         return inst;
     }
@@ -50,8 +117,23 @@ public class InstSimplifier {
         BinaryInst mulInst = (BinaryInst) inst;
         Value op1 = mulInst.getOperand1();
         Value op2 = mulInst.getOperand2();
+        // 常量折叠
         if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
             return new Constant(IntegerType.i32, constant1.getValue() * constant2.getValue());
+        }
+        // 常数作为第二个操作数
+        if (op1 instanceof Constant) {
+            mulInst.swapOperand();
+            op1 = mulInst.getOperand1();
+            op2 = mulInst.getOperand2();
+        }
+        // a*0 = 0;
+        if (op2 instanceof Constant constant && constant.getValue() == 0) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a*1 = a;
+        if (op2 instanceof Constant constant && constant.getValue() == 1) {
+            return op1;
         }
         return inst;
     }
@@ -60,10 +142,28 @@ public class InstSimplifier {
         BinaryInst sdivInst = (BinaryInst) inst;
         Value op1 = sdivInst.getOperand1();
         Value op2 = sdivInst.getOperand2();
+        // 常量折叠
         if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
             if (constant2.getValue() != 0) {
                 return new Constant(IntegerType.i32, constant1.getValue() / constant2.getValue());
             }
+        }
+        // 0/a = 0
+        if (op1 instanceof Constant constant && constant.getValue() == 0) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a/a = 1
+        if (op1.equals(op2)) {
+            return new Constant(IntegerType.i32, 1);
+        }
+        // a/1 = a
+        if (op2 instanceof Constant constant && constant.getValue() == 1) {
+            return op1;
+        }
+        // (a*b)/b = a
+        if (op1 instanceof BinaryInst binaryInst && binaryInst.getOpcode() == Opcode.mul &&
+                binaryInst.getOperand2().equals(op2)) {
+            return binaryInst.getOperand1();
         }
         return inst;
     }
@@ -72,10 +172,23 @@ public class InstSimplifier {
         BinaryInst sremInst = (BinaryInst) inst;
         Value op1 = sremInst.getOperand1();
         Value op2 = sremInst.getOperand2();
+        // 常量折叠
         if (op1 instanceof Constant constant1 && op2 instanceof Constant constant2) {
             if (constant2.getValue() != 0) {
                 return new Constant(IntegerType.i32, constant1.getValue() % constant2.getValue());
             }
+        }
+        // 0%a = 0
+        if (op1 instanceof Constant constant && constant.getValue() == 0) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a%a = 0
+        if (op1.equals(op2)) {
+            return new Constant(IntegerType.i32, 0);
+        }
+        // a%1 = 0
+        if (op2 instanceof Constant constant && constant.getValue() == 1) {
+            return new Constant(IntegerType.i32, 0);
         }
         return inst;
     }
@@ -104,6 +217,10 @@ public class InstSimplifier {
                 cond = v1 <= v2 ? 1 : 0;
             }
             return new Constant(IntegerType.i1, cond);
+        }
+        // a==a = 1
+        if (icmpKind == IcmpInst.IcmpKind.eq && op1.equals(op2)) {
+            return new Constant(IntegerType.i1, 1);
         }
         return inst;
     }

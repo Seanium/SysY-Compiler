@@ -19,6 +19,13 @@ public class BinaryInst extends Inst {
         return operandList.get(1);
     }
 
+    public void swapOperand() {
+        Value op1 = operandList.get(0);
+        Value op2 = operandList.get(1);
+        operandList.set(0, op2);
+        operandList.set(1, op1);
+    }
+
     @Override
     public String toString() {
         Value operand1 = getOperand1();

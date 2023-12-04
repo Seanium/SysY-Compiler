@@ -33,7 +33,7 @@ public class GlobalArray extends Value {
      * @param isConst        声明是否有const关键字。
      */
     public GlobalArray(String name, ArrayList<Integer> dims, int len, ArrayInitValue arrayInitValue, boolean isConst) {
-        super(new PointerType(new ArrayType(dims, len, arrayInitValue.type)), "@g_" + name);
+        super(new PointerType(new ArrayType(dims, len, arrayInitValue.type)), "@" + name + "_g");
         this.arrayType = (ArrayType) ((PointerType) type).getTargetType();
         this.dims = dims;
         this.len = len;

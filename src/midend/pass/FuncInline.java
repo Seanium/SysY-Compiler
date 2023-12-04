@@ -184,12 +184,12 @@ public class FuncInline implements IRPass {
             }
         }
 
-        // 第七步 将calleeCopy中的标签名和变量名后面加上"_callId", 避免多次内联的重名问题
+        // 第七步 将calleeCopy中的标签名和变量名后面加上"_inline+callId", 避免多次内联的重名问题
         for (BasicBlock basicBlock : calleeCopyBlocks) {
-            basicBlock.setName(basicBlock.getName() + "_" + callId);
+            basicBlock.setName(basicBlock.getName() + "_inline" + callId);
             for (Inst inst : basicBlock.getInsts()) {
                 if (!(inst.getName() == null) && !inst.getName().isEmpty()) {
-                    inst.setName(inst.getName() + "_" + callId);
+                    inst.setName(inst.getName() + "_inline" + callId);
                 }
             }
         }

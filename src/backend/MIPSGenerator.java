@@ -29,17 +29,19 @@ public class MIPSGenerator {
         for (Value global : module.getGlobals()) {
             visitGlobal(global);
         }
-        JalInst jalInst = new JalInst("main");
-        mipsBuilder.addAsm(jalInst);
-        JInst jInst = new JInst("end");
+//        JalInst jalInst = new JalInst("main");
+//        mipsBuilder.addAsm(jalInst);
+//        JInst jInst = new JInst("end");
+//        mipsBuilder.addAsm(jInst);
+        JInst jInst = new JInst("main");
         mipsBuilder.addAsm(jInst);
         for (Function function : module.getFunctions()) {
             if (!function.isLib()) {    // 库函数不生成MIPS
                 visitFunction(function);
             }
         }
-        Label endLabel = new Label("end");
-        mipsBuilder.addAsm(endLabel);
+//        Label endLabel = new Label("end");
+//        mipsBuilder.addAsm(endLabel);
     }
 
     public void visitGlobal(Value global) {
@@ -514,6 +516,9 @@ public class MIPSGenerator {
     }
 
     private void visitReturnInst(ReturnInst returnInst) {
+        if (returnInst.getParentBlock().getParentFunc().getName().equals("@main")) {
+            return;
+        }
         Value retVal = returnInst.getValue();
         if (retVal == null) {    // 如果无返回值
             JrInst jrInst = new JrInst(Reg.ra);

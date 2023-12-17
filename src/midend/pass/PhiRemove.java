@@ -72,7 +72,7 @@ public class PhiRemove implements IRPass {
 //            // beginMoves插入到基本块开头
 //            basicBlock.addInsts(0, basicBlock.getBeginMoves());
 //            // endMoves插入到基本块最后一条指令之前
-//            basicBlock.addInsts(basicBlock.getInstructions().size() - 1, basicBlock.getEndMoves());
+//            basicBlock.addInsts(basicBlock.getInsts().size() - 1, basicBlock.getEndMoves());
 //        }
     }
 

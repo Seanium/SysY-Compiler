@@ -294,7 +294,7 @@ public class Lexer {
     }
 
     // tokens数组转字符串，用于输出
-    public String TokensToString(ArrayList<Token> tokens) {
+    public String tokensToString(ArrayList<Token> tokens) {
         StringBuilder sb = new StringBuilder();
         for (Token token : tokens) {
             sb.append(token);

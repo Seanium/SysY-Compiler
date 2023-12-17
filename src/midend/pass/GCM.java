@@ -61,7 +61,7 @@ public class GCM implements IRPass {
     }
 
     /**
-     * schedule early 算法将指令移动到被所有操作数所支配的最浅基本块。
+     * schedule early 将指令移动到被所有操作数所支配的最浅基本块。
      */
     private void scheduleEarly(Inst i) {
         Function func = i.getParentBlock().getParentFunc();

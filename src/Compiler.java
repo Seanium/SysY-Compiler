@@ -21,7 +21,7 @@ public class Compiler {
 //        String source = FileIO.read(args[0]);  // 从命令行参数获取源文件名
         String source = FileIO.read("testfile.txt");
         Lexer lexer = Lexer.getInstance(source);
-//        String tokens = lexer.TokensToString(lexer.tokenize());
+//        String tokens = lexer.tokensToString(lexer.tokenize());
 //        System.out.println(tokens);
 //        FileIO.write("output.txt", tokens);
 

@@ -1,6 +1,6 @@
 # SysY-Compiler
 
-- 基于 Java 实现的 **[SysY](https://gitlab.eduxiji.net/nscscc/compiler2021/-/blob/master/SysY语言定义.pdf) to MIPS** 编译器。
+- 使用 Java 开发的 **[SysY](https://gitlab.eduxiji.net/nscscc/compiler2021/-/blob/master/SysY语言定义.pdf) to MIPS** 编译器。
 
 - 中间代码采用 **LLVM IR**。
 
